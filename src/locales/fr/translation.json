@@ -1,0 +1,218 @@
+{
+  "common": {
+    "welcome": "Bienvenue",
+    "loading": "Chargement...",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "search": "Rechercher",
+    "filter": "Filtrer",
+    "close": "Fermer",
+    "submit": "Soumettre",
+    "back": "Retour",
+    "next": "Suivant",
+    "previous": "Précédent",
+    "confirm": "Confirmer",
+    "error": "Erreur",
+    "success": "Succès"
+  },
+  "auth": {
+    "signIn": "Se connecter",
+    "signUp": "S'inscrire",
+    "logout": "Déconnexion",
+    "email": "Adresse e-mail",
+    "password": "Mot de passe",
+    "confirmPassword": "Confirmer le mot de passe",
+    "firstName": "Prénom",
+    "lastName": "Nom",
+    "role": "Rôle",
+    "forgotPassword": "Mot de passe oublié ?",
+    "createAccount": "Créer un compte",
+    "signingIn": "Connexion en cours...",
+    "registering": "Inscription en cours...",
+    "loginTitle": "Gestion sécurisée de documents",
+    "registerTitle": "Créer votre compte",
+    "alreadyHaveAccount": "Vous avez déjà un compte ?",
+    "dontHaveAccount": "Vous n'avez pas de compte ?",
+    "resetPassword": "Réinitialiser le mot de passe",
+    "sendResetLink": "Envoyer le lien de réinitialisation"
+  },
+  "navigation": {
+    "dashboard": "Tableau de bord",
+    "documents": "Documents",
+    "profile": "Profil",
+    "support": "Support",
+    "settings": "Paramètres"
+  },
+  "dashboard": {
+    "title": "Tableau de bord",
+    "welcomeBack": "Bienvenue, {{name}} !",
+    "subtitle": "Voici ce qui se passe avec vos documents",
+    "overview": "Aperçu",
+    "recentDocuments": "Documents récents",
+    "statistics": "Statistiques",
+    "totalDocuments": "Total de documents",
+    "thisMonth": "Ce mois-ci",
+    "recent": "Récents",
+    "notifications": "Notifications",
+    "sharedWithMe": "Partagés avec moi",
+    "recentActivity": "Activité récente",
+    "viewAll": "Voir tout",
+    "loading": "Chargement des documents..."
+  },
+  "documents": {
+    "title": "Documents",
+    "myDocuments": "Mes documents",
+    "uploadDocument": "Télécharger un document",
+    "noDocuments": "Aucun document trouvé",
+    "documentName": "Nom du document",
+    "uploadedBy": "Téléchargé par",
+    "uploadedAt": "Téléchargé le",
+    "size": "Taille",
+    "type": "Type",
+    "actions": "Actions",
+    "download": "Télécharger",
+    "share": "Partager",
+    "delete": "Supprimer",
+    "view": "Voir",
+    "dragDrop": "Glissez-déposez les fichiers ici ou cliquez pour parcourir",
+    "uploadSuccess": "Document téléchargé avec succès !",
+    "uploadError": "Échec du téléchargement du document"
+  },
+  "profile": {
+    "title": "Profil & Paramètres",
+    "subtitle": "Gérer vos informations de compte et préférences",
+    "profileTab": "Informations du profil",
+    "securityTab": "Sécurité",
+    "firstName": "Prénom",
+    "lastName": "Nom",
+    "email": "E-mail",
+    "phone": "Numéro de téléphone",
+    "organization": "Organisation",
+    "role": "Rôle",
+    "updateProfile": "Mettre à jour le profil",
+    "updating": "Mise à jour...",
+    "changePassword": "Changer le mot de passe",
+    "currentPassword": "Mot de passe actuel",
+    "newPassword": "Nouveau mot de passe",
+    "confirmNewPassword": "Confirmer le nouveau mot de passe",
+    "passwordRequirements": "Le mot de passe doit contenir au moins 8 caractères dont une majuscule, une minuscule et un chiffre",
+    "profileUpdated": "Profil mis à jour avec succès !",
+    "passwordUpdated": "Mot de passe mis à jour avec succès !",
+    "passwordMismatch": "Les mots de passe ne correspondent pas !",
+    "passwordTooShort": "Le mot de passe doit contenir au moins 8 caractères !",
+    "passwordWeak": "Le mot de passe doit contenir au moins une lettre majuscule, une lettre minuscule et un chiffre !"
+  },
+  "support": {
+    "title": "Aide & Support",
+    "subtitle": "Trouvez des réponses aux questions courantes ou contactez notre équipe de support",
+    "contactUs": "Nous contacter",
+    "faq": "Questions Fréquemment Posées",
+    "faqTitle": "Questions Fréquemment Posées",
+    "documentation": "Documentation",
+    "tutorialsTitle": "Tutoriels & Guides",
+    "contactSupportTitle": "Contacter le Support",
+    "tabContact": "Contacter le Support",
+    "tabMyMessages": "Mes Messages",
+    "tabFAQ": "FAQ",
+    "noMessages": "Aucun message pour le moment",
+    "noMessagesDescription": "Vous n'avez pas encore envoyé de message de support.",
+    "loading": "Chargement des messages...",
+    "adminResponse": "Réponse de l'administrateur",
+    "yourMessage": "Votre Message",
+    "respondedOn": "Répondu le",
+    "sendAMessage": "Envoyer un Message",
+    "statusPending": "En attente",
+    "statusInProgress": "En cours",
+    "statusResolved": "Résolu",
+    "statusClosed": "Fermé",
+    "category": "Catégorie",
+    "categoryGeneral": "Général",
+    "categoryTechnical": "Problème Technique",
+    "categoryBilling": "Facturation",
+    "categoryFeatureRequest": "Demande de Fonctionnalité",
+    "categoryBugReport": "Rapport de Bug",
+    "categoryOther": "Autre",
+    "subject": "Sujet",
+    "subjectPlaceholder": "Brève description de votre problème",
+    "message": "Message",
+    "messagePlaceholder": "Veuillez fournir des détails sur votre question ou problème...",
+    "sendMessage": "Envoyer le message",
+    "sending": "Envoi en cours...",
+    "contactInfo": "Vous pouvez également nous joindre à :",
+    "responseTime": "Temps de réponse moyen : 2-4 heures",
+    "successMessage": "Votre message a été envoyé. Nous vous répondrons dans les 24 heures.",
+    "faqs": {
+      "uploadDocs": {
+        "question": "Comment télécharger des documents ?",
+        "answer": "Accédez à la page Documents et cliquez sur le bouton 'Télécharger des documents'. Vous pouvez glisser-déposer des fichiers ou cliquer pour les sélectionner depuis votre ordinateur. Ajoutez des métadonnées comme le titre et la description, puis cliquez sur Télécharger."
+      },
+      "encryption": {
+        "question": "Mes documents sont-ils chiffrés ?",
+        "answer": "Oui ! Tous les documents sont chiffrés en transit (utilisant TLS) et au repos (utilisant le chiffrement AES-256). La sécurité de vos données est notre priorité absolue."
+      },
+      "sharing": {
+        "question": "Comment partager des documents avec d'autres personnes ?",
+        "answer": "Ouvrez un document et cliquez sur le bouton Partager. Entrez l'adresse e-mail de la personne avec qui vous souhaitez partager, sélectionnez son niveau d'autorisation (Visualisation ou Édition), et cliquez sur Partager. Elle recevra une notification."
+      },
+      "recovery": {
+        "question": "Puis-je récupérer des documents supprimés ?",
+        "answer": "Les documents supprimés sont déplacés dans le dossier Corbeille où ils restent pendant 30 jours avant suppression définitive. Vous pouvez les restaurer depuis la Corbeille pendant cette période."
+      },
+      "fileTypes": {
+        "question": "Quels types de fichiers sont pris en charge ?",
+        "answer": "Nous prenons en charge une large gamme de types de fichiers, notamment PDF, DOCX, XLSX, PPTX, TXT et divers formats d'image (JPG, PNG, GIF). La taille maximale du fichier est de 100 Mo par document."
+      },
+      "twoFactor": {
+        "question": "Comment activer l'authentification à deux facteurs ?",
+        "answer": "Allez dans Profil & Paramètres > Sécurité et cliquez sur 'Activer 2FA'. Suivez les instructions pour configurer l'authentification à deux facteurs à l'aide d'une application d'authentification ou par SMS."
+      },
+      "mobile": {
+        "question": "Puis-je accéder à mes documents sur mobile ?",
+        "answer": "Oui ! Notre application est entièrement responsive et fonctionne sur tous les appareils. Accédez simplement à l'application via votre navigateur mobile."
+      },
+      "cancellation": {
+        "question": "Qu'advient-il de mes données si j'annule mon abonnement ?",
+        "answer": "Vous disposerez de 30 jours pour télécharger vos documents avant leur suppression définitive. Nous vous recommandons d'exporter tous les documents importants avant d'annuler."
+      }
+    },
+    "tutorials": {
+      "gettingStarted": {
+        "title": "Guide de démarrage",
+        "duration": "5 min de lecture"
+      },
+      "organization": {
+        "title": "Meilleures pratiques d'organisation des documents",
+        "duration": "8 min de lecture"
+      },
+      "collaboration": {
+        "title": "Aperçu des fonctionnalités de collaboration",
+        "duration": "6 min de lecture"
+      },
+      "security": {
+        "title": "Paramètres de sécurité et de confidentialité",
+        "duration": "7 min de lecture"
+      }
+    }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "noNotifications": "Aucune notification",
+    "markAllRead": "Tout marquer comme lu",
+    "newNotification": "Nouvelle notification"
+  },
+  "comments": {
+    "title": "Commentaires",
+    "addComment": "Ajouter un commentaire...",
+    "noComments": "Pas encore de commentaires",
+    "reply": "Répondre",
+    "edit": "Modifier",
+    "delete": "Supprimer"
+  },
+  "language": {
+    "select": "Langue",
+    "english": "English",
+    "french": "Français"
+  }
+}

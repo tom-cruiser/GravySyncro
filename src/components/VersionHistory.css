@@ -1,0 +1,103 @@
+.version-history {
+  background: white;
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow);
+}
+
+.version-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 24px;
+  color: var(--gray-800);
+}
+
+.version-header h3 {
+  font-size: 18px;
+}
+
+.versions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.version-item {
+  display: flex;
+  align-items: start;
+  gap: 16px;
+  padding: 16px;
+  background: var(--gray-50);
+  border-radius: var(--radius);
+  border-left: 4px solid var(--gray-300);
+  transition: var(--transition);
+}
+
+.version-item.current {
+  background: #667eea10;
+  border-left-color: var(--primary);
+}
+
+.version-item:hover {
+  box-shadow: var(--shadow);
+}
+
+.version-badge {
+  padding: 6px 12px;
+  background: var(--gray-200);
+  color: var(--gray-700);
+  border-radius: var(--radius);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.version-item.current .version-badge {
+  background: var(--primary);
+  color: white;
+}
+
+.version-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.version-info {
+  margin-bottom: 8px;
+}
+
+.version-info strong {
+  display: block;
+  font-size: 14px;
+  color: var(--gray-800);
+  margin-bottom: 4px;
+}
+
+.version-changes {
+  font-size: 13px;
+  color: var(--gray-600);
+}
+
+.version-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--gray-500);
+}
+
+.revert-btn {
+  padding: 8px;
+  background: white;
+  border: 2px solid var(--gray-300);
+  border-radius: var(--radius);
+  color: var(--primary);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.revert-btn:hover {
+  background: var(--gray-50);
+  border-color: var(--primary);
+}

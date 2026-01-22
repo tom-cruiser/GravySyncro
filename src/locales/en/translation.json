@@ -1,0 +1,218 @@
+{
+  "common": {
+    "welcome": "Welcome",
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "search": "Search",
+    "filter": "Filter",
+    "close": "Close",
+    "submit": "Submit",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "confirm": "Confirm",
+    "error": "Error",
+    "success": "Success"
+  },
+  "auth": {
+    "signIn": "Sign In",
+    "signUp": "Sign Up",
+    "logout": "Logout",
+    "email": "Email Address",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "role": "Role",
+    "forgotPassword": "Forgot Password?",
+    "createAccount": "Create Account",
+    "signingIn": "Signing in...",
+    "registering": "Registering...",
+    "loginTitle": "Secure Document Management",
+    "registerTitle": "Create Your Account",
+    "alreadyHaveAccount": "Already have an account?",
+    "dontHaveAccount": "Don't have an account?",
+    "resetPassword": "Reset Password",
+    "sendResetLink": "Send Reset Link"
+  },
+  "navigation": {
+    "dashboard": "Dashboard",
+    "documents": "Documents",
+    "profile": "Profile",
+    "support": "Support",
+    "settings": "Settings"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcomeBack": "Welcome back, {{name}}!",
+    "subtitle": "Here's what's happening with your documents",
+    "overview": "Overview",
+    "recentDocuments": "Recent Documents",
+    "statistics": "Statistics",
+    "totalDocuments": "Total Documents",
+    "thisMonth": "This Month",
+    "recent": "Recent",
+    "notifications": "Notifications",
+    "sharedWithMe": "Shared with Me",
+    "recentActivity": "Recent Activity",
+    "viewAll": "View All",
+    "loading": "Loading documents..."
+  },
+  "documents": {
+    "title": "Documents",
+    "myDocuments": "My Documents",
+    "uploadDocument": "Upload Document",
+    "noDocuments": "No documents found",
+    "documentName": "Document Name",
+    "uploadedBy": "Uploaded By",
+    "uploadedAt": "Uploaded At",
+    "size": "Size",
+    "type": "Type",
+    "actions": "Actions",
+    "download": "Download",
+    "share": "Share",
+    "delete": "Delete",
+    "view": "View",
+    "dragDrop": "Drag and drop files here or click to browse",
+    "uploadSuccess": "Document uploaded successfully!",
+    "uploadError": "Failed to upload document"
+  },
+  "profile": {
+    "title": "Profile & Settings",
+    "subtitle": "Manage your account information and preferences",
+    "profileTab": "Profile Information",
+    "securityTab": "Security",
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "email": "Email",
+    "phone": "Phone Number",
+    "organization": "Organization",
+    "role": "Role",
+    "updateProfile": "Update Profile",
+    "updating": "Updating...",
+    "changePassword": "Change Password",
+    "currentPassword": "Current Password",
+    "newPassword": "New Password",
+    "confirmNewPassword": "Confirm New Password",
+    "passwordRequirements": "Password must be at least 8 characters and contain uppercase, lowercase, and number",
+    "profileUpdated": "Profile updated successfully!",
+    "passwordUpdated": "Password updated successfully!",
+    "passwordMismatch": "Passwords do not match!",
+    "passwordTooShort": "Password must be at least 8 characters!",
+    "passwordWeak": "Password must contain at least one uppercase letter, one lowercase letter, and one number!"
+  },
+  "support": {
+    "title": "Help & Support",
+    "subtitle": "Find answers to common questions or contact our support team",
+    "contactUs": "Contact Us",
+    "faq": "Frequently Asked Questions",
+    "faqTitle": "Frequently Asked Questions",
+    "documentation": "Documentation",
+    "tutorialsTitle": "Tutorials & Guides",
+    "contactSupportTitle": "Contact Support",
+    "tabContact": "Contact Support",
+    "tabMyMessages": "My Messages",
+    "tabFAQ": "FAQ",
+    "noMessages": "No messages yet",
+    "noMessagesDescription": "You haven't sent any support messages yet.",
+    "loading": "Loading messages...",
+    "adminResponse": "Admin Response",
+    "yourMessage": "Your Message",
+    "respondedOn": "Responded on",
+    "sendAMessage": "Send a Message",
+    "statusPending": "Pending",
+    "statusInProgress": "In Progress",
+    "statusResolved": "Resolved",
+    "statusClosed": "Closed",
+    "category": "Category",
+    "categoryGeneral": "General",
+    "categoryTechnical": "Technical Issue",
+    "categoryBilling": "Billing",
+    "categoryFeatureRequest": "Feature Request",
+    "categoryBugReport": "Bug Report",
+    "categoryOther": "Other",
+    "subject": "Subject",
+    "subjectPlaceholder": "Brief description of your issue",
+    "message": "Message",
+    "messagePlaceholder": "Please provide details about your question or issue...",
+    "sendMessage": "Send Message",
+    "sending": "Sending...",
+    "contactInfo": "You can also reach us at:",
+    "responseTime": "Average response time: 2-4 hours",
+    "successMessage": "Your message has been sent. We'll get back to you within 24 hours.",
+    "faqs": {
+      "uploadDocs": {
+        "question": "How do I upload documents?",
+        "answer": "Navigate to the Documents page and click the 'Upload Documents' button. You can drag and drop files or click to select them from your computer. Add metadata like title and description, then click Upload."
+      },
+      "encryption": {
+        "question": "Are my documents encrypted?",
+        "answer": "Yes! All documents are encrypted both in transit (using TLS) and at rest (using AES-256 encryption). Your data security is our top priority."
+      },
+      "sharing": {
+        "question": "How do I share documents with others?",
+        "answer": "Open a document and click the Share button. Enter the email address of the person you want to share with, select their permission level (View or Edit), and click Share. They will receive a notification."
+      },
+      "recovery": {
+        "question": "Can I recover deleted documents?",
+        "answer": "Deleted documents are moved to the Trash folder where they remain for 30 days before permanent deletion. You can restore them from the Trash during this period."
+      },
+      "fileTypes": {
+        "question": "What file types are supported?",
+        "answer": "We support a wide range of file types including PDF, DOCX, XLSX, PPTX, TXT, and various image formats (JPG, PNG, GIF). Maximum file size is 100MB per document."
+      },
+      "twoFactor": {
+        "question": "How do I enable two-factor authentication?",
+        "answer": "Go to Profile & Settings > Security and click 'Enable 2FA'. Follow the instructions to set up two-factor authentication using an authenticator app or SMS."
+      },
+      "mobile": {
+        "question": "Can I access my documents on mobile?",
+        "answer": "Yes! Our application is fully responsive and works on all devices. Simply access the application through your mobile browser."
+      },
+      "cancellation": {
+        "question": "What happens to my data if I cancel my subscription?",
+        "answer": "You will have 30 days to download your documents before they are permanently deleted. We recommend exporting all important documents before canceling."
+      }
+    },
+    "tutorials": {
+      "gettingStarted": {
+        "title": "Getting Started Guide",
+        "duration": "5 min read"
+      },
+      "organization": {
+        "title": "Document Organization Best Practices",
+        "duration": "8 min read"
+      },
+      "collaboration": {
+        "title": "Collaboration Features Overview",
+        "duration": "6 min read"
+      },
+      "security": {
+        "title": "Security and Privacy Settings",
+        "duration": "7 min read"
+      }
+    }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "noNotifications": "No notifications",
+    "markAllRead": "Mark all as read",
+    "newNotification": "New notification"
+  },
+  "comments": {
+    "title": "Comments",
+    "addComment": "Add a comment...",
+    "noComments": "No comments yet",
+    "reply": "Reply",
+    "edit": "Edit",
+    "delete": "Delete"
+  },
+  "language": {
+    "select": "Language",
+    "english": "English",
+    "french": "Français"
+  }
+}

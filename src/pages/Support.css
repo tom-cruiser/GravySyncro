@@ -1,0 +1,335 @@
+.support-page {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.support-header {
+  text-align: center;
+  margin-bottom: 48px;
+}
+
+.support-header svg {
+  color: var(--primary);
+  margin-bottom: 16px;
+}
+
+.support-header h1 {
+  font-size: 32px;
+  margin-bottom: 12px;
+}
+
+.support-content {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+.support-section {
+  background: white;
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  box-shadow: var(--shadow);
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+  color: var(--primary);
+}
+
+.section-header h2 {
+  font-size: 22px;
+}
+
+.faq-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.faq-item {
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.faq-question {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: white;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--gray-800);
+  transition: var(--transition);
+}
+
+.faq-question:hover {
+  background: var(--gray-50);
+}
+
+.faq-answer {
+  padding: 16px 20px;
+  background: var(--gray-50);
+  color: var(--gray-700);
+  line-height: 1.6;
+  font-size: 14px;
+  border-top: 1px solid var(--gray-200);
+}
+
+.tutorials-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tutorial-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: var(--gray-50);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.tutorial-item:hover {
+  background: var(--gray-100);
+  box-shadow: var(--shadow);
+}
+
+.tutorial-item svg {
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.tutorial-item h3 {
+  font-size: 15px;
+  color: var(--gray-800);
+  margin-bottom: 4px;
+}
+
+.duration {
+  font-size: 12px;
+  color: var(--gray-500);
+}
+
+.contact-form .form-group {
+  margin-bottom: 20px;
+}
+
+.contact-form label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--gray-700);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.contact-form input,
+.contact-form textarea {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid var(--gray-200);
+  border-radius: var(--radius);
+  font-size: 14px;
+  transition: var(--transition);
+}
+
+.contact-form input:focus,
+.contact-form textarea:focus {
+  border-color: var(--primary);
+  outline: none;
+}
+
+.contact-form textarea {
+  resize: vertical;
+}
+
+.contact-info {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--gray-200);
+  text-align: center;
+}
+
+.contact-info p {
+  color: var(--gray-600);
+  margin-bottom: 8px;
+}
+
+.contact-info a {
+  color: var(--primary);
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.response-time {
+  font-size: 12px;
+  color: var(--gray-500);
+  margin-top: 12px;
+}
+
+.support-tabs {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 32px;
+  border-bottom: 2px solid var(--gray-200);
+  padding-bottom: 0;
+}
+
+.support-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--gray-600);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  margin-bottom: -2px;
+}
+
+.support-tab:hover {
+  color: var(--primary);
+  background: var(--gray-50);
+}
+
+.support-tab.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+.user-message-card {
+  background: white;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.message-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.message-card-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--gray-800);
+}
+
+.message-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.message-card-date {
+  font-size: 13px;
+  color: var(--gray-500);
+}
+
+.message-card-body {
+  color: var(--gray-700);
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+.message-card-response {
+  background: var(--gray-50);
+  border-left: 3px solid var(--primary);
+  padding: 16px;
+  border-radius: var(--radius);
+  margin-top: 16px;
+}
+
+.message-card-response-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary);
+  margin-bottom: 8px;
+}
+
+.message-card-response-text {
+  color: var(--gray-700);
+  line-height: 1.6;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status-pending {
+  background: var(--warning-light);
+  color: var(--warning);
+}
+
+.status-progress {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.status-resolved {
+  background: var(--success-light);
+  color: var(--success);
+}
+
+.status-closed {
+  background: var(--gray-200);
+  color: var(--gray-600);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--gray-500);
+}
+
+.empty-state svg {
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+@media (max-width: 768px) {
+  .support-section {
+    padding: 20px;
+  }
+
+  .support-header h1 {
+    font-size: 24px;
+  }
+
+  .support-tabs {
+    gap: 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .support-tab {
+    padding: 10px 16px;
+    font-size: 14px;
+    white-space: nowrap;
+  }
+}
