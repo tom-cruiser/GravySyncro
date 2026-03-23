@@ -102,7 +102,11 @@
     "passwordUpdated": "Password updated successfully!",
     "passwordMismatch": "Passwords do not match!",
     "passwordTooShort": "Password must be at least 8 characters!",
-    "passwordWeak": "Password must contain at least one uppercase letter, one lowercase letter, and one number!"
+    "passwordWeak": "Password must contain at least one uppercase letter, one lowercase letter, and one number!",
+    "organizationCode": "Organization Code",
+    "copyOrganizationCode": "Copy",
+    "organizationCodeCopied": "Organization code copied successfully!",
+    "organizationCodeCopyError": "Failed to copy organization code."
   },
   "support": {
     "title": "Help & Support",
@@ -209,6 +213,63 @@
     "reply": "Reply",
     "edit": "Edit",
     "delete": "Delete"
+  },
+  "landing": {
+    "nav": {
+      "contact": "Contact",
+      "getStarted": "Get Started"
+    },
+    "hero": {
+      "eyebrow": "Secure document operations for modern teams",
+      "title": "Welcome to GravySyncro",
+      "description": "GravySyncro helps organizations archive, organize, share, and monitor critical documents in one secure workspace. From uploads to collaboration and admin-level control, every action is synchronized in real time.",
+      "primaryCta": "Get Started",
+      "secondaryCta": "Talk to us",
+      "points": {
+        "one": "Tenant-aware access and control",
+        "two": "Fast upload, search, and structured organization",
+        "three": "Alerts, activity logs, and storage governance"
+      }
+    },
+    "panel": {
+      "title": "Why teams choose GravySyncro",
+      "items": {
+        "security": "Security-first architecture",
+        "collaboration": "Versioning and collaboration tools",
+        "notifications": "Smart notifications and admin insights"
+      }
+    },
+    "explain": {
+      "app": {
+        "title": "What the app does",
+        "description": "GravySyncro is a SaaS platform for secure document archiving and collaborative workflows. Users can upload files, browse by structure, share documents, and keep version history with controlled permissions."
+      },
+      "admins": {
+        "title": "Built for admins",
+        "description": "Admins can oversee users, monitor activity, manage notifications, and allocate storage plans. This gives clear control over usage and keeps teams aligned with operational policies."
+      },
+      "users": {
+        "title": "Built for users",
+        "description": "Users get a focused interface for storing and retrieving documents quickly, with useful features like search, previews, sharing, and profile personalization."
+      }
+    },
+    "contact": {
+      "eyebrow": "Contact",
+      "title": "Ready to onboard your team?",
+      "description": "Reach out to us and we will help you set up GravySyncro for your workflow.",
+      "cards": {
+        "email": {
+          "title": "Email"
+        },
+        "phone": {
+          "title": "Phone"
+        },
+        "location": {
+          "title": "Location",
+          "value": "Bujumbura, Burundi"
+        }
+      }
+    }
   },
   "language": {
     "select": "Language",

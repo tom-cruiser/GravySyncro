@@ -10,6 +10,17 @@
   color: var(--primary);
 }
 
+.share-close-btn {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  color: var(--gray-500);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .share-header h2 {
   font-size: 24px;
 }
@@ -34,6 +45,12 @@
 
 .share-form {
   margin-bottom: 32px;
+}
+
+.share-loading,
+.share-empty {
+  color: var(--gray-600);
+  font-size: 14px;
 }
 
 .input-group {
@@ -152,11 +169,36 @@
   font-weight: 500;
 }
 
+.user-meta {
+  color: var(--gray-500);
+  font-size: 12px;
+}
+
+.shared-user-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .user-permission {
   font-size: 12px;
   padding: 4px 10px;
   background: var(--primary);
   color: white;
   border-radius: 12px;
+  font-weight: 600;
+}
+
+.btn-unshare {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border: 1px solid #fecaca;
+  background: #fff1f2;
+  color: #b91c1c;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
   font-weight: 600;
 }

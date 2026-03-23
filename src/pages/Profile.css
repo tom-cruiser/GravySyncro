@@ -267,6 +267,31 @@
   font-size: 14px;
 }
 
+.info-value-code {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.copy-org-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--gray-300);
+  background: #fff;
+  color: var(--gray-700);
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.copy-org-btn:hover {
+  background: var(--gray-50);
+}
+
 .status-verified,
 .status-unverified {
   display: inline-flex;

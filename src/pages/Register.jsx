@@ -9,6 +9,7 @@ const Register = () => {
     firstName: '',
     lastName: '',
     email: '',
+    tenantId: '',
     password: '',
     confirmPassword: '',
     role: 'Student',
@@ -50,6 +51,7 @@ const Register = () => {
           firstName: formData.firstName,
           lastName: formData.lastName,
           email: formData.email,
+          tenantId: formData.tenantId?.trim() || undefined,
           password: formData.password,
           role: formData.role,
         }),
@@ -86,7 +88,7 @@ const Register = () => {
     <div className="auth-container">
       <div className="auth-card">
         <div className="auth-header">
-          <h1>DocArchive</h1>
+          <h1>GravySyncro</h1>
           <p>Create Your Account</p>
         </div>
 
@@ -149,6 +151,19 @@ const Register = () => {
                 <option key={role} value={role}>{role}</option>
               ))}
             </select>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="tenantId">Organization Code (optional)</label>
+            <input
+              type="text"
+              id="tenantId"
+              name="tenantId"
+              value={formData.tenantId}
+              onChange={handleChange}
+              placeholder="Example: tenant_abc123"
+            />
+            <small>Use the same code as your teammate to join the same organization.</small>
           </div>
 
           <div className="form-group">

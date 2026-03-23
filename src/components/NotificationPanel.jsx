@@ -1,17 +1,28 @@
-import React, { useEffect, useState } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
-import { Bell, X, Check, Mail, MessageCircle } from 'lucide-react';
-import axios from 'axios';
-import { markAsRead, markAllAsRead, deleteNotification, setNotifications } from '../features/notifications/notificationsSlice';
-import './NotificationPanel.css';
+import React, { useEffect, useState } from "react";
+import { useSelector, useDispatch } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import { Bell, X, Check, Mail, MessageCircle } from "lucide-react";
+import axios from "axios";
+import {
+  markAsRead,
+  markAllAsRead,
+  deleteNotification,
+  setNotifications,
+  setUnreadCount,
+} from "../features/notifications/notificationsSlice";
+import "./NotificationPanel.css";
 
 const NotificationPanel = ({ onClose }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { token, user } = useSelector(state => state.auth);
-  const { notifications, unreadCount } = useSelector(state => state.notifications);
+  const { token, user } = useSelector((state) => state.auth);
+  const { inbox, unreadCount } = useSelector(
+    (state) => state.notifications,
+  );
   const [loading, setLoading] = useState(true);
+
+  const isServerNotificationId = (id) =>
+    typeof id === 'string' && /^[a-f\d]{24}$/i.test(id);
 
   useEffect(() => {
     if (token) {
@@ -28,78 +39,91 @@ const NotificationPanel = ({ onClose }) => {
         `${import.meta.env.VITE_API_URL}/notifications`,
         {
           headers: { Authorization: `Bearer ${token}` },
-          params: { limit: 50 }
-        }
+          params: { limit: 50 },
+        },
       );
-      
-      const formattedNotifications = response.data.data.notifications.map(notif => ({
-        id: notif._id,
-        type: notif.type,
-        title: notif.title,
-        message: notif.message,
-        read: notif.isRead,
-        timestamp: notif.createdAt,
-        relatedMessage: notif.relatedMessage,
-        relatedDocument: notif.relatedDocument,
-        relatedUser: notif.relatedUser
-      }));
-      
+
+      const formattedNotifications = response.data.data.notifications.map(
+        (notif) => ({
+          id: notif._id,
+          type: notif.type,
+          title: notif.title,
+          message: notif.message,
+          read: !!notif.read,
+          timestamp: notif.createdAt,
+          relatedMessage: notif.relatedMessage,
+          relatedDocument: notif.relatedDocument,
+          relatedUser: notif.relatedUser,
+        }),
+      );
+
       dispatch(setNotifications(formattedNotifications));
+      dispatch(setUnreadCount(response.data.unreadCount || 0));
     } catch (error) {
-      console.error('Error fetching notifications:', error);
+      console.error("Error fetching notifications:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const displayNotifications = notifications.length > 0 ? notifications : [];
+  const displayNotifications = inbox.length > 0 ? inbox : [];
 
   const getTimeAgo = (timestamp) => {
     const now = new Date();
     const time = new Date(timestamp);
     const diff = Math.floor((now - time) / 1000);
 
-    if (diff < 60) return 'Just now';
+    if (diff < 60) return "Just now";
     if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
     if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
     return `${Math.floor(diff / 86400)}d ago`;
   };
 
   const handleMarkAsRead = async (notificationId) => {
+    if (!isServerNotificationId(notificationId)) {
+      dispatch(markAsRead(notificationId));
+      return;
+    }
+
     try {
       await axios.patch(
-        `${import.meta.env.VITE_API_URL}/notifications/${notificationId}/read`,
+        `${import.meta.env.VITE_API_URL}/notifications/${notificationId}`,
         {},
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
       dispatch(markAsRead(notificationId));
     } catch (error) {
-      console.error('Error marking notification as read:', error);
+      console.error("Error marking notification as read:", error);
     }
   };
 
   const handleMarkAllAsRead = async () => {
     try {
       await axios.patch(
-        `${import.meta.env.VITE_API_URL}/notifications/read-all`,
+        `${import.meta.env.VITE_API_URL}/notifications/mark-all-read`,
         {},
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
       dispatch(markAllAsRead());
     } catch (error) {
-      console.error('Error marking all as read:', error);
+      console.error("Error marking all as read:", error);
     }
   };
 
   const handleDeleteNotification = async (notificationId) => {
+    if (!isServerNotificationId(notificationId)) {
+      dispatch(deleteNotification(notificationId));
+      return;
+    }
+
     try {
       await axios.delete(
         `${import.meta.env.VITE_API_URL}/notifications/${notificationId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
       dispatch(deleteNotification(notificationId));
     } catch (error) {
-      console.error('Error deleting notification:', error);
+      console.error("Error deleting notification:", error);
     }
   };
 
@@ -115,25 +139,30 @@ const NotificationPanel = ({ onClose }) => {
     }
 
     // Navigate based on notification type
-    if (notification.type === 'support_response') {
+    if (notification.type === "support_response") {
       // Navigate to support page to view messages, set tab to my-messages
-      navigate('/support', { state: { activeTab: 'my-messages' } });
-    } else if (notification.type === 'message_received' && user?.role === 'Admin') {
+      navigate("/support", { state: { activeTab: "my-messages" } });
+    } else if (
+      notification.type === "message_received" &&
+      user?.role === "Admin"
+    ) {
       // Navigate to admin messages tab
-      navigate('/admin', { state: { activeTab: 'messages' } });
+      navigate("/admin", { state: { activeTab: "messages" } });
     } else if (notification.relatedDocument) {
       // Navigate to document if available
-      navigate('/documents');
+      navigate("/documents");
     }
   };
 
   const getNotificationIcon = (type) => {
     switch (type) {
-      case 'support_response':
-      case 'message_received':
-        return <MessageCircle size={18} className="notification-icon-support" />;
-      case 'document_shared':
-      case 'document_uploaded':
+      case "support_response":
+      case "message_received":
+        return (
+          <MessageCircle size={18} className="notification-icon-support" />
+        );
+      case "document_shared":
+      case "document_uploaded":
         return <Bell size={18} className="notification-icon-document" />;
       default:
         return <Bell size={18} className="notification-icon-default" />;
@@ -165,22 +194,26 @@ const NotificationPanel = ({ onClose }) => {
             <p>No notifications yet</p>
           </div>
         ) : (
-          displayNotifications.map(notification => (
-            <div 
-              key={notification.id} 
-              className={`notification-item ${notification.read ? 'read' : 'unread'}`}
+          displayNotifications.map((notification) => (
+            <div
+              key={notification.id}
+              className={`notification-item ${notification.read ? "read" : "unread"}`}
               onClick={() => handleNotificationClick(notification)}
-              style={{ cursor: 'pointer' }}
+              style={{ cursor: "pointer" }}
             >
               <div className="notification-icon-wrapper">
                 {getNotificationIcon(notification.type)}
               </div>
               <div className="notification-content">
                 {notification.title && (
-                  <p className="notification-title-text">{notification.title}</p>
+                  <p className="notification-title-text">
+                    {notification.title}
+                  </p>
                 )}
                 <p className="notification-message">{notification.message}</p>
-                <span className="notification-time">{getTimeAgo(notification.timestamp)}</span>
+                <span className="notification-time">
+                  {getTimeAgo(notification.timestamp)}
+                </span>
               </div>
               <div className="notification-actions">
                 {!notification.read && (

@@ -1,20 +1,20 @@
-import { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
-import axios from 'axios';
-import { 
-  Mail, 
-  MailOpen, 
-  Send, 
-  CheckCircle, 
-  Clock, 
+import { useState, useEffect } from "react";
+import { useSelector } from "react-redux";
+import axios from "axios";
+import {
+  Mail,
+  MailOpen,
+  Send,
+  CheckCircle,
+  Clock,
   AlertCircle,
   User,
   Calendar,
   Tag,
   Filter,
-  RefreshCw
-} from 'lucide-react';
-import './AdminMessages.css';
+  RefreshCw,
+} from "lucide-react";
+import "./AdminMessages.css";
 
 const AdminMessages = () => {
   const { token } = useSelector((state) => state.auth);
@@ -22,13 +22,13 @@ const AdminMessages = () => {
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ unreadCount: 0 });
-  const [response, setResponse] = useState('');
+  const [response, setResponse] = useState("");
   const [sending, setSending] = useState(false);
   const [filters, setFilters] = useState({
-    status: '',
-    priority: '',
-    category: '',
-    search: ''
+    status: "",
+    priority: "",
+    category: "",
+    search: "",
   });
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -43,22 +43,22 @@ const AdminMessages = () => {
       const params = {
         page,
         limit: 20,
-        ...filters
+        ...filters,
       };
 
       const response = await axios.get(
         `${import.meta.env.VITE_API_URL}/messages`,
         {
           headers: { Authorization: `Bearer ${token}` },
-          params
-        }
+          params,
+        },
       );
 
       setMessages(response.data.data.messages);
       setStats({ unreadCount: response.data.data.unreadCount });
       setTotalPages(response.data.data.pagination.pages);
     } catch (error) {
-      console.error('Error fetching messages:', error);
+      console.error("Error fetching messages:", error);
     } finally {
       setLoading(false);
     }
@@ -66,7 +66,7 @@ const AdminMessages = () => {
 
   const handleSelectMessage = async (message) => {
     setSelectedMessage(message);
-    setResponse(message.response || '');
+    setResponse(message.response || "");
 
     // Mark as read if unread
     if (!message.isRead) {
@@ -75,12 +75,12 @@ const AdminMessages = () => {
           `${import.meta.env.VITE_API_URL}/messages/${message._id}/read`,
           {},
           {
-            headers: { Authorization: `Bearer ${token}` }
-          }
+            headers: { Authorization: `Bearer ${token}` },
+          },
         );
         fetchMessages(); // Refresh list
       } catch (error) {
-        console.error('Error marking as read:', error);
+        console.error("Error marking as read:", error);
       }
     }
   };
@@ -93,19 +93,19 @@ const AdminMessages = () => {
     try {
       await axios.post(
         `${import.meta.env.VITE_API_URL}/messages/${selectedMessage._id}/respond`,
-        { response, status: 'resolved' },
+        { response, status: "resolved" },
         {
-          headers: { Authorization: `Bearer ${token}` }
-        }
+          headers: { Authorization: `Bearer ${token}` },
+        },
       );
 
-      alert('Response sent successfully!');
+      alert("Response sent successfully!");
       setSelectedMessage(null);
-      setResponse('');
+      setResponse("");
       fetchMessages();
     } catch (error) {
-      console.error('Error sending response:', error);
-      alert('Failed to send response');
+      console.error("Error sending response:", error);
+      alert("Failed to send response");
     } finally {
       setSending(false);
     }
@@ -117,15 +117,15 @@ const AdminMessages = () => {
         `${import.meta.env.VITE_API_URL}/messages/${messageId}`,
         { status: newStatus },
         {
-          headers: { Authorization: `Bearer ${token}` }
-        }
+          headers: { Authorization: `Bearer ${token}` },
+        },
       );
       fetchMessages();
       if (selectedMessage && selectedMessage._id === messageId) {
         setSelectedMessage({ ...selectedMessage, status: newStatus });
       }
     } catch (error) {
-      console.error('Error updating status:', error);
+      console.error("Error updating status:", error);
     }
   };
 
@@ -136,34 +136,38 @@ const AdminMessages = () => {
 
   const clearFilters = () => {
     setFilters({
-      status: '',
-      priority: '',
-      category: '',
-      search: ''
+      status: "",
+      priority: "",
+      category: "",
+      search: "",
     });
     setPage(1);
   };
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
-    return date.toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    return date.toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
   const getStatusIcon = (status) => {
     switch (status) {
-      case 'pending':
+      case "pending":
         return <Clock className="status-icon status-pending" size={16} />;
-      case 'in_progress':
-        return <AlertCircle className="status-icon status-progress" size={16} />;
-      case 'resolved':
-        return <CheckCircle className="status-icon status-resolved" size={16} />;
-      case 'closed':
+      case "in_progress":
+        return (
+          <AlertCircle className="status-icon status-progress" size={16} />
+        );
+      case "resolved":
+        return (
+          <CheckCircle className="status-icon status-resolved" size={16} />
+        );
+      case "closed":
         return <CheckCircle className="status-icon status-closed" size={16} />;
       default:
         return null;
@@ -195,13 +199,13 @@ const AdminMessages = () => {
           type="text"
           placeholder="Search messages..."
           value={filters.search}
-          onChange={(e) => handleFilterChange('search', e.target.value)}
+          onChange={(e) => handleFilterChange("search", e.target.value)}
           className="filter-input"
         />
 
         <select
           value={filters.status}
-          onChange={(e) => handleFilterChange('status', e.target.value)}
+          onChange={(e) => handleFilterChange("status", e.target.value)}
           className="filter-select"
         >
           <option value="">All Status</option>
@@ -213,7 +217,7 @@ const AdminMessages = () => {
 
         <select
           value={filters.priority}
-          onChange={(e) => handleFilterChange('priority', e.target.value)}
+          onChange={(e) => handleFilterChange("priority", e.target.value)}
           className="filter-select"
         >
           <option value="">All Priority</option>
@@ -225,7 +229,7 @@ const AdminMessages = () => {
 
         <select
           value={filters.category}
-          onChange={(e) => handleFilterChange('category', e.target.value)}
+          onChange={(e) => handleFilterChange("category", e.target.value)}
           className="filter-select"
         >
           <option value="">All Categories</option>
@@ -255,30 +259,36 @@ const AdminMessages = () => {
             messages.map((message) => (
               <div
                 key={message._id}
-                className={`message-item ${!message.isRead ? 'unread' : ''} ${
-                  selectedMessage?._id === message._id ? 'selected' : ''
+                className={`message-item ${!message.isRead ? "unread" : ""} ${
+                  selectedMessage?._id === message._id ? "selected" : ""
                 }`}
                 onClick={() => handleSelectMessage(message)}
               >
                 <div className="message-item-header">
                   <div className="message-user">
-                    {!message.isRead ? <Mail size={18} /> : <MailOpen size={18} />}
+                    {!message.isRead ? (
+                      <Mail size={18} />
+                    ) : (
+                      <MailOpen size={18} />
+                    )}
                     <span className="user-name">
                       {message.user?.firstName} {message.user?.lastName}
                     </span>
                   </div>
-                  <span className={`priority-badge ${getPriorityClass(message.priority)}`}>
+                  <span
+                    className={`priority-badge ${getPriorityClass(message.priority)}`}
+                  >
                     {message.priority}
                   </span>
                 </div>
                 <div className="message-subject">{message.subject}</div>
                 <div className="message-meta">
                   <span className="category-tag">
-                    <Tag size={14} /> {message.category.replace('_', ' ')}
+                    <Tag size={14} /> {message.category.replace("_", " ")}
                   </span>
                   <span className="status-badge">
                     {getStatusIcon(message.status)}
-                    {message.status.replace('_', ' ')}
+                    {message.status.replace("_", " ")}
                   </span>
                 </div>
                 <div className="message-date">
@@ -324,7 +334,8 @@ const AdminMessages = () => {
                   <User size={24} />
                   <div>
                     <h3>
-                      {selectedMessage.user?.firstName} {selectedMessage.user?.lastName}
+                      {selectedMessage.user?.firstName}{" "}
+                      {selectedMessage.user?.lastName}
                     </h3>
                     <p>{selectedMessage.user?.email}</p>
                   </div>
@@ -332,7 +343,9 @@ const AdminMessages = () => {
                 <div className="detail-actions">
                   <select
                     value={selectedMessage.status}
-                    onChange={(e) => handleUpdateStatus(selectedMessage._id, e.target.value)}
+                    onChange={(e) =>
+                      handleUpdateStatus(selectedMessage._id, e.target.value)
+                    }
                     className="status-select"
                   >
                     <option value="pending">Pending</option>
@@ -344,11 +357,13 @@ const AdminMessages = () => {
               </div>
 
               <div className="detail-meta">
-                <span className={`priority-badge ${getPriorityClass(selectedMessage.priority)}`}>
+                <span
+                  className={`priority-badge ${getPriorityClass(selectedMessage.priority)}`}
+                >
                   {selectedMessage.priority} priority
                 </span>
                 <span className="category-tag">
-                  <Tag size={14} /> {selectedMessage.category.replace('_', ' ')}
+                  <Tag size={14} /> {selectedMessage.category.replace("_", " ")}
                 </span>
                 <span className="date-text">
                   <Calendar size={14} /> {formatDate(selectedMessage.createdAt)}
@@ -371,15 +386,20 @@ const AdminMessages = () => {
                   <p>{selectedMessage.response}</p>
                   {selectedMessage.respondedAt && (
                     <small>
-                      Responded on {formatDate(selectedMessage.respondedAt)} by{' '}
-                      {selectedMessage.respondedBy?.firstName} {selectedMessage.respondedBy?.lastName}
+                      Responded on {formatDate(selectedMessage.respondedAt)} by{" "}
+                      {selectedMessage.respondedBy?.firstName}{" "}
+                      {selectedMessage.respondedBy?.lastName}
                     </small>
                   )}
                 </div>
               )}
 
               <form onSubmit={handleSendResponse} className="response-form">
-                <h4>{selectedMessage.response ? 'Update Response:' : 'Send Response:'}</h4>
+                <h4>
+                  {selectedMessage.response
+                    ? "Update Response:"
+                    : "Send Response:"}
+                </h4>
                 <textarea
                   value={response}
                   onChange={(e) => setResponse(e.target.value)}
@@ -390,7 +410,7 @@ const AdminMessages = () => {
                 />
                 <button type="submit" className="btn-send" disabled={sending}>
                   <Send size={18} />
-                  {sending ? 'Sending...' : 'Send Response'}
+                  {sending ? "Sending..." : "Send Response"}
                 </button>
               </form>
             </div>

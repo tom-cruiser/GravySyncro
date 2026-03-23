@@ -342,7 +342,7 @@ const Support = () => {
 
               <div className="contact-info">
                 <p>{t('support.contactInfo')}</p>
-                <a href="mailto:support@docarchive.com">support@docarchive.com</a>
+                <a href="mailto:support@gravysyncro.com">support@gravysyncro.com</a>
                 <p className="response-time">{t('support.responseTime')}</p>
               </div>
             </div>

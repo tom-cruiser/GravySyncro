@@ -2,19 +2,24 @@ import React, { useState, useRef, useEffect } from 'react';
 import { FileText, Download, Share2, MoreVertical, Lock, Trash2, Edit, Eye } from 'lucide-react';
 import './DocumentCard.css';
 
-const DocumentCard = ({ document, onDownload, onShare, onDelete, onView }) => {
+const DocumentCard = ({ document: doc, onDownload, onShare, onDelete, onView }) => {
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef(null);
 
   useEffect(() => {
+    const browserDocument = globalThis.document;
+    if (!browserDocument || typeof browserDocument.addEventListener !== 'function') {
+      return undefined;
+    }
+
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
         setShowMenu(false);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    browserDocument.addEventListener('mousedown', handleClickOutside);
+    return () => browserDocument.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const getFileIcon = (type) => {
@@ -48,8 +53,8 @@ const DocumentCard = ({ document, onDownload, onShare, onDelete, onView }) => {
   return (
     <div className="document-card">
       <div className="document-card-header">
-        <div className="document-icon" style={{ backgroundColor: `${getTypeColor(document.type)}20`, color: getTypeColor(document.type) }}>
-          {getFileIcon(document.type)}
+        <div className="document-icon" style={{ backgroundColor: `${getTypeColor(doc.type)}20`, color: getTypeColor(doc.type) }}>
+          {getFileIcon(doc.type)}
         </div>
         <div className="more-menu" ref={menuRef}>
           <button className="more-btn" onClick={handleMenuClick}>
@@ -57,16 +62,16 @@ const DocumentCard = ({ document, onDownload, onShare, onDelete, onView }) => {
           </button>
           {showMenu && (
             <div className="dropdown-menu">
-              <button onClick={() => handleAction(() => onView?.(document))}>
+              <button onClick={() => handleAction(() => onView?.(doc))}>
                 <Eye size={16} /> View
               </button>
-              <button onClick={() => handleAction(() => onDownload?.(document))}>
+              <button onClick={() => handleAction(() => onDownload?.(doc))}>
                 <Download size={16} /> Download
               </button>
-              <button onClick={() => handleAction(() => onShare?.(document))}>
+              <button onClick={() => handleAction(() => onShare?.(doc))}>
                 <Share2 size={16} /> Share
               </button>
-              <button onClick={() => handleAction(() => onDelete?.(document))} className="danger">
+              <button onClick={() => handleAction(() => onDelete?.(doc))} className="danger">
                 <Trash2 size={16} /> Delete
               </button>
             </div>
@@ -75,24 +80,24 @@ const DocumentCard = ({ document, onDownload, onShare, onDelete, onView }) => {
       </div>
 
       <div className="document-card-body">
-        <h3 className="document-title">{document.title}</h3>
+        <h3 className="document-title">{doc.title}</h3>
         <div className="document-meta">
-          <span className="document-type" style={{ backgroundColor: `${getTypeColor(document.type)}20`, color: getTypeColor(document.type) }}>
-            {document.type}
+          <span className="document-type" style={{ backgroundColor: `${getTypeColor(doc.type)}20`, color: getTypeColor(doc.type) }}>
+            {doc.type}
           </span>
-          <span className="document-size">{document.size}</span>
+          <span className="document-size">{doc.size}</span>
         </div>
-        <p className="document-date">{document.date}</p>
+        <p className="document-date">{doc.date}</p>
       </div>
 
       <div className="document-card-footer">
-        <button className="icon-btn" title="Download" onClick={() => onDownload?.(document)}>
+        <button className="icon-btn" title="Download" onClick={() => onDownload?.(doc)}>
           <Download size={18} />
         </button>
-        <button className="icon-btn" title="Share" onClick={() => onShare?.(document)}>
+        <button className="icon-btn" title="Share" onClick={() => onShare?.(doc)}>
           <Share2 size={18} />
         </button>
-        {document.encrypted && (
+        {doc.encrypted && (
           <div className="encrypted-badge" title="Encrypted">
             <Lock size={14} />
           </div>

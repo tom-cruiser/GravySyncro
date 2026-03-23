@@ -67,7 +67,7 @@ const Login = () => {
       <div className="auth-card">
         <div className="auth-header">
           <div className="auth-header-top">
-            <h1>DocArchive</h1>
+            <h1>GravySyncro</h1>
             <LanguageSelector />
           </div>
           <p>{t('auth.loginTitle')}</p>

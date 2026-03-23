@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
-import { User, Mail, Briefcase, Lock, Save, Shield, CheckCircle, XCircle } from 'lucide-react';
+import { User, Mail, Briefcase, Lock, Save, Shield, CheckCircle, XCircle, Copy } from 'lucide-react';
 import { updateProfile } from '../features/auth/authSlice';
 import axios from 'axios';
 import './Profile.css';
@@ -50,6 +50,17 @@ const Profile = () => {
   const showMessage = (type, text) => {
     setMessage({ type, text });
     setTimeout(() => setMessage({ type: '', text: '' }), 5000);
+  };
+
+  const handleCopyTenantId = async () => {
+    if (!user?.tenantId) return;
+
+    try {
+      await navigator.clipboard.writeText(user.tenantId);
+      showMessage('success', t('profile.organizationCodeCopied'));
+    } catch (error) {
+      showMessage('error', t('profile.organizationCodeCopyError'));
+    }
   };
 
   const handleProfileUpdate = async (e) => {
@@ -281,6 +292,18 @@ const Profile = () => {
                 <div className="info-item">
                   <span className="info-label">Member Since:</span>
                   <span className="info-value">{new Date(user?.createdAt).toLocaleDateString()}</span>
+                </div>
+                <div className="info-item">
+                  <span className="info-label">{t('profile.organizationCode')}:</span>
+                  <span className="info-value info-value-code">
+                    <span>{user?.tenantId || '-'}</span>
+                    {!!user?.tenantId && (
+                      <button type="button" className="copy-org-btn" onClick={handleCopyTenantId}>
+                        <Copy size={14} />
+                        {t('profile.copyOrganizationCode')}
+                      </button>
+                    )}
+                  </span>
                 </div>
               </div>
 

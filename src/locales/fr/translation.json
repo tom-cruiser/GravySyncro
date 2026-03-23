@@ -102,7 +102,11 @@
     "passwordUpdated": "Mot de passe mis à jour avec succès !",
     "passwordMismatch": "Les mots de passe ne correspondent pas !",
     "passwordTooShort": "Le mot de passe doit contenir au moins 8 caractères !",
-    "passwordWeak": "Le mot de passe doit contenir au moins une lettre majuscule, une lettre minuscule et un chiffre !"
+    "passwordWeak": "Le mot de passe doit contenir au moins une lettre majuscule, une lettre minuscule et un chiffre !",
+    "organizationCode": "Code d'organisation",
+    "copyOrganizationCode": "Copier",
+    "organizationCodeCopied": "Code d'organisation copié avec succès !",
+    "organizationCodeCopyError": "Echec de la copie du code d'organisation."
   },
   "support": {
     "title": "Aide & Support",
@@ -209,6 +213,63 @@
     "reply": "Répondre",
     "edit": "Modifier",
     "delete": "Supprimer"
+  },
+  "landing": {
+    "nav": {
+      "contact": "Contact",
+      "getStarted": "Commencer"
+    },
+    "hero": {
+      "eyebrow": "Des operations documentaires securisees pour les equipes modernes",
+      "title": "Bienvenue sur GravySyncro",
+      "description": "GravySyncro aide les organisations a archiver, organiser, partager et superviser leurs documents critiques dans un espace securise unique. Du televersement a la collaboration, jusqu'au pilotage admin, chaque action est synchronisee en temps reel.",
+      "primaryCta": "Commencer",
+      "secondaryCta": "Nous contacter",
+      "points": {
+        "one": "Controle d'acces multi-tenant",
+        "two": "Televersement rapide, recherche et organisation structuree",
+        "three": "Alertes, journaux d'activite et gouvernance du stockage"
+      }
+    },
+    "panel": {
+      "title": "Pourquoi les equipes choisissent GravySyncro",
+      "items": {
+        "security": "Architecture orientee securite",
+        "collaboration": "Versioning et outils de collaboration",
+        "notifications": "Notifications intelligentes et insights admin"
+      }
+    },
+    "explain": {
+      "app": {
+        "title": "Ce que fait l'application",
+        "description": "GravySyncro est une plateforme SaaS pour l'archivage securise et les workflows collaboratifs. Les utilisateurs peuvent televerser des fichiers, naviguer par structure, partager des documents et conserver l'historique des versions avec des permissions controlees."
+      },
+      "admins": {
+        "title": "Concue pour les admins",
+        "description": "Les administrateurs peuvent superviser les utilisateurs, suivre l'activite, gerer les notifications et attribuer des plans de stockage. Cela garantit un pilotage clair de l'usage et l'alignement avec les politiques internes."
+      },
+      "users": {
+        "title": "Concue pour les utilisateurs",
+        "description": "Les utilisateurs beneficient d'une interface claire pour stocker et retrouver rapidement leurs documents, avec la recherche, la previsualisation, le partage et la personnalisation du profil."
+      }
+    },
+    "contact": {
+      "eyebrow": "Contact",
+      "title": "Pret a embarquer votre equipe ?",
+      "description": "Contactez-nous et nous vous aiderons a configurer GravySyncro selon votre workflow.",
+      "cards": {
+        "email": {
+          "title": "Email"
+        },
+        "phone": {
+          "title": "Telephone"
+        },
+        "location": {
+          "title": "Localisation",
+          "value": "Bujumbura, Burundi"
+        }
+      }
+    }
   },
   "language": {
     "select": "Langue",

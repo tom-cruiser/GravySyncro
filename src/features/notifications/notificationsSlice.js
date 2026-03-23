@@ -1,7 +1,8 @@
 import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
-  notifications: [],
+  inbox: [],
+  toasts: [],
   unreadCount: 0,
 };
 
@@ -10,40 +11,53 @@ const notificationsSlice = createSlice({
   initialState,
   reducers: {
     addNotification: (state, action) => {
-      state.notifications = [action.payload, ...state.notifications];
-      state.unreadCount += 1;
+      const toast = {
+        id: action.payload.id || Date.now(),
+        type: action.payload.type || 'info',
+        message: action.payload.message || '',
+        timestamp: action.payload.timestamp || new Date().toISOString(),
+      };
+      state.toasts = [toast, ...state.toasts].slice(0, 6);
+    },
+    dismissToast: (state, action) => {
+      state.toasts = state.toasts.filter(t => t.id !== action.payload);
     },
     markAsRead: (state, action) => {
-      const notification = state.notifications.find(n => n.id === action.payload);
+      const notification = state.inbox.find(n => n.id === action.payload);
       if (notification && !notification.read) {
         notification.read = true;
         state.unreadCount = Math.max(0, state.unreadCount - 1);
       }
     },
     markAllAsRead: (state) => {
-      state.notifications.forEach(n => n.read = true);
+      state.inbox.forEach(n => n.read = true);
       state.unreadCount = 0;
     },
     deleteNotification: (state, action) => {
-      const notification = state.notifications.find(n => n.id === action.payload);
+      const notification = state.inbox.find(n => n.id === action.payload);
       if (notification && !notification.read) {
         state.unreadCount = Math.max(0, state.unreadCount - 1);
       }
-      state.notifications = state.notifications.filter(n => n.id !== action.payload);
+      state.inbox = state.inbox.filter(n => n.id !== action.payload);
     },
     setNotifications: (state, action) => {
-      state.notifications = action.payload;
+      state.inbox = action.payload;
       state.unreadCount = action.payload.filter(n => !n.read).length;
+    },
+    setUnreadCount: (state, action) => {
+      state.unreadCount = Math.max(0, Number(action.payload) || 0);
     },
   },
 });
 
 export const {
   addNotification,
+  dismissToast,
   markAsRead,
   markAllAsRead,
   deleteNotification,
   setNotifications,
+  setUnreadCount,
 } = notificationsSlice.actions;
 
 export default notificationsSlice.reducer;

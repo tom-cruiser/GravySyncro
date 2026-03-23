@@ -72,23 +72,22 @@ const Dashboard = () => {
     { icon: Bell, label: t('dashboard.notifications'), value: unreadCount, color: '#f56565' },
   ];
 
-  const handleDownload = async (document) => {
+  const handleDownload = async (doc) => {
     try {
       const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}/documents/${document.id}/download`,
+        `${import.meta.env.VITE_API_URL}/documents/${doc.id}/download`,
         {
           headers: { Authorization: `Bearer ${token}` },
-          responseType: 'blob',
         }
       );
-      
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', document.title);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
+
+      const signedUrl = response.data?.data?.url;
+      if (signedUrl) {
+        window.open(signedUrl, '_blank', 'noopener,noreferrer');
+        return;
+      }
+
+      throw new Error('No download URL received');
     } catch (error) {
       console.error('Error downloading document:', error);
       alert('Failed to download document');

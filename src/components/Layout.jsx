@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
+import axios from 'axios';
 import { 
   LayoutDashboard, 
   FileText, 
@@ -13,6 +14,7 @@ import {
   Bell
 } from 'lucide-react';
 import { logout } from '../features/auth/authSlice';
+import { setUnreadCount } from '../features/notifications/notificationsSlice';
 import LanguageSelector from './LanguageSelector';
 import NotificationPanel from './NotificationPanel';
 import './Layout.css';
@@ -25,6 +27,30 @@ const Layout = () => {
   const { unreadCount } = useSelector(state => state.notifications);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchUnreadCount = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        const response = await axios.get(
+          `${import.meta.env.VITE_API_URL}/notifications/unread-count`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        dispatch(setUnreadCount(response.data?.data?.count || 0));
+      } catch (error) {
+        // Keep UI quiet on polling failures.
+      }
+    };
+
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 15000);
+    return () => clearInterval(interval);
+  }, [dispatch, user]);
 
   const handleLogout = () => {
     dispatch(logout());
@@ -47,7 +73,7 @@ const Layout = () => {
     <div className="layout">
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
-          <h2>DocArchive</h2>
+          <h2>GravySyncro</h2>
           <button className="close-sidebar" onClick={() => setSidebarOpen(false)}>
             <X size={24} />
           </button>
