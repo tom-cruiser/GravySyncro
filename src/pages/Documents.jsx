@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useDropzone } from 'react-dropzone';
-import { Upload, X } from 'lucide-react';
+import { Upload, X, Film, FileText, RotateCcw, CheckCircle2, AlertCircle } from 'lucide-react';
 import axios from 'axios';
 import {
   fetchDocumentsStart,
@@ -19,10 +19,95 @@ import SearchBar from '../components/SearchBar';
 import ShareDocument from '../components/ShareDocument';
 import './Documents.css';
 
+// ─── Constants ────────────────────────────────────────────────────────────────
+const MAX_DOC_FILES = 100;
+const MAX_DOC_SIZE = 157286400; // 150 MB
+
+const MAX_VIDEO_SIZE = 1.5 * 1024 * 1024 * 1024; // 1.5 GB
+const MAX_CONCURRENT_VIDEO_UPLOADS = 3;
+const CHUNK_SIZE = 10 * 1024 * 1024; // 10 MB parts
+
+const ALLOWED_VIDEO_MIME = new Set([
+  'video/mp4', 'video/quicktime', 'video/x-msvideo',
+  'video/x-matroska', 'video/webm', 'video/3gpp',
+  'video/3gpp2', 'video/mpeg',
+]);
+const ALLOWED_VIDEO_EXT = new Set(['mp4', 'mov', 'avi', 'mkv', 'webm', '3gp', '3g2', 'mpeg', 'mpg']);
+
+const DOC_MIME_TYPES = {
+  'application/pdf': ['.pdf'],
+  'application/msword': ['.doc'],
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+  'application/vnd.ms-excel': ['.xls'],
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+  'application/vnd.ms-powerpoint': ['.ppt'],
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': ['.pptx'],
+  'image/jpeg': ['.jpg', '.jpeg'],
+  'image/png': ['.png'],
+  'image/gif': ['.gif'],
+  'image/webp': ['.webp'],
+  'text/plain': ['.txt'],
+  'application/zip': ['.zip'],
+  'application/x-rar-compressed': ['.rar'],
+};
+
+const VIDEO_ACCEPT_MIME = {
+  'video/mp4': ['.mp4'],
+  'video/quicktime': ['.mov'],
+  'video/x-msvideo': ['.avi'],
+  'video/x-matroska': ['.mkv'],
+  'video/webm': ['.webm'],
+  'video/3gpp': ['.3gp'],
+  'video/3gpp2': ['.3g2'],
+  'video/mpeg': ['.mpeg', '.mpg'],
+};
+
+const DOCUMENT_TYPES = ['General', 'Contract', 'Legal', 'Academic', 'Financial', 'Personal'];
+
+// ─── SHA-256 helper (browser SubtleCrypto) ────────────────────────────────────
+const computeSHA256 = async (file) => {
+  const buffer = await file.arrayBuffer();
+  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+};
+
+// ─── Upload-state helpers ─────────────────────────────────────────────────────
+const UPLOAD_STATUS = {
+  QUEUED: 'queued',
+  HASHING: 'hashing',
+  INITIATING: 'initiating',
+  UPLOADING: 'uploading',
+  COMPLETING: 'completing',
+  DONE: 'done',
+  ERROR: 'error',
+  ABORTED: 'aborted',
+};
+
+const mkVideoUploadState = (file) => ({
+  id: `${file.name}-${file.size}-${Date.now()}`,
+  file,
+  status: UPLOAD_STATUS.QUEUED,
+  progress: 0,          // 0-100
+  error: null,
+  videoId: null,        // server Video._id (for resume)
+  uploadId: null,       // S3 UploadId
+  storageKey: null,
+  totalParts: 0,
+  uploadedParts: [],    // [{ PartNumber, ETag }]
+  abortController: null,
+});
+
+// ─── Component ────────────────────────────────────────────────────────────────
 const Documents = () => {
   const dispatch = useDispatch();
   const { token } = useSelector(state => state.auth);
   const { documents, isUploading, uploadProgress, isLoading, filters } = useSelector(state => state.documents);
+
+  // Tab: 'files' | 'videos'
+  const [activeTab, setActiveTab] = useState('files');
+
+  // Document upload state
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareTargetDocument, setShareTargetDocument] = useState(null);
@@ -33,41 +118,20 @@ const Documents = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalDocuments, setTotalDocuments] = useState(0);
   const [pageSize] = useState(20);
-  const [metadata, setMetadata] = useState({
-    title: '',
-    description: '',
-    type: 'General',
-  });
+  const [metadata, setMetadata] = useState({ title: '', description: '', type: 'General' });
 
-  const MAX_FILES = 100;
-  const MAX_FILE_SIZE = 157286400; // 150MB
+  // Video upload state
+  const [showVideoModal, setShowVideoModal] = useState(false);
+  const [videoUploads, setVideoUploads] = useState([]); // array of mkVideoUploadState
+  const [videoMetadata, setVideoMetadata] = useState({ title: '', description: '', category: 'General' });
+  const [videos, setVideos] = useState([]);
+  const [videoPage, setVideoPage] = useState(1);
+  const [videoTotalPages, setVideoTotalPages] = useState(1);
+  const [videoTotal, setVideoTotal] = useState(0);
+  const videoUploadQueue = useRef([]); // tracks in-flight uploads to cap concurrency
 
-  const documentTypes = ['General', 'Contract', 'Legal', 'Academic', 'Financial', 'Personal'];
-  const acceptedMimeTypes = {
-    'application/pdf': ['.pdf'],
-    'application/msword': ['.doc'],
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
-    'application/vnd.ms-excel': ['.xls'],
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
-    'application/vnd.ms-powerpoint': ['.ppt'],
-    'application/vnd.openxmlformats-officedocument.presentationml.presentation': ['.pptx'],
-    'image/jpeg': ['.jpg', '.jpeg'],
-    'image/png': ['.png'],
-    'image/gif': ['.gif'],
-    'image/webp': ['.webp'],
-    'text/plain': ['.txt'],
-    'application/zip': ['.zip'],
-    'application/x-rar-compressed': ['.rar'],
-  };
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [filters.searchQuery, filters.type, filters.sortBy]);
-
-  useEffect(() => {
-    if (!token) return;
-    fetchDocuments(currentPage);
-  }, [token, currentPage, filters.searchQuery, filters.type, filters.sortBy]);
+  // ── Helpers ──────────────────────────────────────────────────────────────
+  const authHeaders = () => ({ Authorization: `Bearer ${token}` });
 
   const formatFileSize = (bytes) => {
     if (!bytes || bytes === 0) return '0 Bytes';
@@ -82,7 +146,6 @@ const Documents = () => {
     const normalizedType = String(typeSource).includes('/')
       ? String(typeSource).split('/')[1].toUpperCase()
       : String(typeSource).toUpperCase();
-
     return {
       ...doc,
       id: doc._id || doc.id,
@@ -96,157 +159,144 @@ const Documents = () => {
     };
   };
 
+  // ── Document fetch ────────────────────────────────────────────────────────
+  useEffect(() => { setCurrentPage(1); }, [filters.searchQuery, filters.type, filters.sortBy]);
+
+  useEffect(() => {
+    if (!token || activeTab !== 'files') return;
+    fetchDocuments(currentPage);
+  }, [token, currentPage, filters.searchQuery, filters.type, filters.sortBy, activeTab]);
+
   const fetchDocuments = async (page = currentPage) => {
     dispatch(fetchDocumentsStart());
-
     const sortByMap = {
-      date: '-createdAt',
-      'date-asc': 'createdAt',
-      name: 'name',
-      'name-desc': '-name',
-      size: '-fileSize',
-      'size-asc': 'fileSize',
+      date: '-createdAt', 'date-asc': 'createdAt',
+      name: 'name', 'name-desc': '-name',
+      size: '-fileSize', 'size-asc': 'fileSize',
     };
-
     try {
-      const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}/documents`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          params: {
-            page,
-            limit: pageSize,
-            sortBy: sortByMap[filters.sortBy] || '-createdAt',
-            ...(filters.searchQuery?.trim() ? { search: filters.searchQuery.trim() } : {}),
-            ...(filters.type && filters.type !== 'all' ? { category: filters.type } : {}),
-          },
-        }
-      );
-
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/documents`, {
+        headers: authHeaders(),
+        params: {
+          page, limit: pageSize,
+          sortBy: sortByMap[filters.sortBy] || '-createdAt',
+          ...(filters.searchQuery?.trim() ? { search: filters.searchQuery.trim() } : {}),
+          ...(filters.type && filters.type !== 'all' ? { category: filters.type } : {}),
+        },
+      });
       const docs = (response.data?.data?.documents || []).map(mapDocument);
       dispatch(fetchDocumentsSuccess(docs));
       setTotalPages(Math.max(1, Number(response.data?.pages) || 1));
       setTotalDocuments(Number(response.data?.total) || docs.length);
     } catch (error) {
-      console.error('Error fetching documents:', error);
       dispatch(fetchDocumentsFailure('Failed to load documents'));
     }
   };
 
-  const acceptedExtensions = Object.values(acceptedMimeTypes).flat();
+  // ── Video fetch ───────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!token || activeTab !== 'videos') return;
+    fetchVideos(videoPage);
+  }, [token, videoPage, activeTab]);
 
-  const isSupportedFile = (file) => {
-    if (file?.type && acceptedMimeTypes[file.type]) {
-      return true;
-    }
-
-    const extension = file?.name?.includes('.')
-      ? `.${file.name.split('.').pop().toLowerCase()}`
-      : '';
-    return acceptedExtensions.includes(extension);
+  const fetchVideos = async (page = videoPage) => {
+    try {
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/videos`, {
+        headers: authHeaders(),
+        params: { page, limit: 20 },
+      });
+      setVideos(res.data?.data?.videos || []);
+      setVideoTotalPages(Math.max(1, res.data?.pages || 1));
+      setVideoTotal(res.data?.total || 0);
+    } catch (_) {}
   };
 
-  const applyFileSelection = useCallback((files) => {
-    const incomingFiles = Array.from(files || []);
-    if (incomingFiles.length === 0) return;
+  // ── Document file selection ───────────────────────────────────────────────
+  const docExtensions = Object.values(DOC_MIME_TYPES).flat();
 
-    const rejectedByType = incomingFiles.filter((file) => !isSupportedFile(file));
-    const supportedFiles = incomingFiles.filter((file) => isSupportedFile(file));
+  const isSupportedDocFile = (file) => {
+    if (file?.type && DOC_MIME_TYPES[file.type]) return true;
+    const ext = file?.name?.includes('.') ? `.${file.name.split('.').pop().toLowerCase()}` : '';
+    return docExtensions.includes(ext);
+  };
 
-    const rejectedBySize = supportedFiles.filter((file) => file.size > MAX_FILE_SIZE);
-    let validFiles = supportedFiles.filter((file) => file.size <= MAX_FILE_SIZE);
+  const applyDocFileSelection = useCallback((files) => {
+    const incoming = Array.from(files || []);
+    if (!incoming.length) return;
+    const rejected = incoming.filter(f => !isSupportedDocFile(f));
+    let valid = incoming.filter(f => isSupportedDocFile(f));
+    const tooLarge = valid.filter(f => f.size > MAX_DOC_SIZE);
+    valid = valid.filter(f => f.size <= MAX_DOC_SIZE);
 
-    if (validFiles.length > MAX_FILES) {
-      dispatch(addNotification({
-        id: Date.now(),
-        type: 'error',
-        message: `Folder/file selection contains ${validFiles.length} files. Maximum allowed is ${MAX_FILES}.`,
-        read: false,
-        timestamp: new Date().toISOString(),
-      }));
-      validFiles = validFiles.slice(0, MAX_FILES);
+    if (valid.length > MAX_DOC_FILES) {
+      dispatch(addNotification({ id: Date.now(), type: 'error', message: `Max ${MAX_DOC_FILES} files allowed.`, read: false, timestamp: new Date().toISOString() }));
+      valid = valid.slice(0, MAX_DOC_FILES);
     }
+    if (rejected.length) dispatch(addNotification({ id: Date.now() + 1, type: 'error', message: `${rejected.length} file(s) skipped: unsupported format.`, read: false, timestamp: new Date().toISOString() }));
+    if (tooLarge.length) dispatch(addNotification({ id: Date.now() + 2, type: 'error', message: `${tooLarge.length} file(s) skipped: exceeds 150 MB.`, read: false, timestamp: new Date().toISOString() }));
 
-    if (rejectedByType.length > 0) {
-      dispatch(addNotification({
-        id: Date.now() + 1,
-        type: 'error',
-        message: `${rejectedByType.length} file(s) skipped: unsupported format.`,
-        read: false,
-        timestamp: new Date().toISOString(),
-      }));
-    }
-
-    if (rejectedBySize.length > 0) {
-      dispatch(addNotification({
-        id: Date.now() + 2,
-        type: 'error',
-        message: `${rejectedBySize.length} file(s) skipped: file size exceeds 150MB.`,
-        read: false,
-        timestamp: new Date().toISOString(),
-      }));
-    }
-
-    setUploadFiles(validFiles);
-    if (validFiles.length === 1 && !metadata.title) {
-      setMetadata(prev => ({ ...prev, title: validFiles[0].name }));
-    }
-
-    if (validFiles.length > 1 && metadata.title) {
-      setMetadata(prev => ({ ...prev, title: '' }));
-    }
+    setUploadFiles(valid);
+    if (valid.length === 1 && !metadata.title) setMetadata(prev => ({ ...prev, title: valid[0].name }));
+    if (valid.length > 1) setMetadata(prev => ({ ...prev, title: '' }));
   }, [dispatch, metadata.title]);
 
-  const onDrop = useCallback((acceptedFiles) => {
-    applyFileSelection(acceptedFiles);
-  }, [applyFileSelection]);
-
-  const onDropRejected = useCallback((fileRejections) => {
-    const firstRejection = fileRejections?.[0];
-    const firstError = firstRejection?.errors?.[0];
-    const message = firstError?.message || 'File rejected. Please use a supported format and size.';
-
-    dispatch(addNotification({
-      id: Date.now(),
-      type: 'error',
-      message,
-      read: false,
-      timestamp: new Date().toISOString(),
-    }));
-  }, [dispatch]);
-
-  const handleFolderPick = () => {
-    folderInputRef.current?.click();
-  };
-
-  const handleFolderSelection = (event) => {
-    const files = event.target.files;
-    applyFileSelection(files);
-    event.target.value = '';
-  };
-
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    onDropRejected,
+    onDrop: applyDocFileSelection,
+    onDropRejected: (rej) => {
+      const msg = rej?.[0]?.errors?.[0]?.message || 'File rejected.';
+      dispatch(addNotification({ id: Date.now(), type: 'error', message: msg, read: false, timestamp: new Date().toISOString() }));
+    },
     multiple: true,
-    accept: acceptedMimeTypes,
-    maxSize: MAX_FILE_SIZE,
-    maxFiles: MAX_FILES,
+    accept: DOC_MIME_TYPES,
+    maxSize: MAX_DOC_SIZE,
+    maxFiles: MAX_DOC_FILES,
   });
 
-  const handleUpload = async () => {
-    if (uploadFiles.length === 0) return;
+  // ── Video file selection ──────────────────────────────────────────────────
+  const isValidVideoFile = (file) => {
+    if (ALLOWED_VIDEO_MIME.has(file.type)) return true;
+    const ext = file?.name?.includes('.') ? file.name.split('.').pop().toLowerCase() : '';
+    return ALLOWED_VIDEO_EXT.has(ext);
+  };
 
+  const applyVideoFileSelection = useCallback((files) => {
+    const incoming = Array.from(files || []);
+    if (!incoming.length) return;
+
+    const rejected = incoming.filter(f => !isValidVideoFile(f));
+    const tooLarge = incoming.filter(f => isValidVideoFile(f) && f.size > MAX_VIDEO_SIZE);
+    const valid = incoming.filter(f => isValidVideoFile(f) && f.size <= MAX_VIDEO_SIZE);
+
+    if (rejected.length) dispatch(addNotification({ id: Date.now(), type: 'error', message: `${rejected.length} file(s) rejected: unsupported video format. Accepted: MP4, MOV, AVI, MKV, WebM, 3GP, MPEG.`, read: false, timestamp: new Date().toISOString() }));
+    if (tooLarge.length) dispatch(addNotification({ id: Date.now() + 1, type: 'error', message: `${tooLarge.length} file(s) rejected: exceeds 1.5 GB limit.`, read: false, timestamp: new Date().toISOString() }));
+
+    const newUploads = valid.map(mkVideoUploadState);
+    setVideoUploads(prev => [...prev, ...newUploads]);
+
+    if (valid.length === 1 && !videoMetadata.title) setVideoMetadata(prev => ({ ...prev, title: valid[0].name.replace(/\.[^.]+$/, '') }));
+  }, [dispatch, videoMetadata.title]);
+
+  const {
+    getRootProps: getVideoRootProps,
+    getInputProps: getVideoInputProps,
+    isDragActive: isVideoDragActive,
+  } = useDropzone({
+    onDrop: applyVideoFileSelection,
+    multiple: true,
+    accept: VIDEO_ACCEPT_MIME,
+    maxSize: MAX_VIDEO_SIZE,
+  });
+
+  // ── Document upload ───────────────────────────────────────────────────────
+  const handleDocUpload = async () => {
+    if (!uploadFiles.length) return;
     dispatch(uploadDocumentStart());
-
     try {
       for (let i = 0; i < uploadFiles.length; i++) {
         const file = uploadFiles[i];
         const relativePath = file.webkitRelativePath || file.name;
-        const relativeSegments = relativePath.split('/').filter(Boolean);
-        const derivedFolderPath = relativeSegments.length > 1
-          ? relativeSegments.slice(0, -1).join('/')
-          : '';
+        const segs = relativePath.split('/').filter(Boolean);
+        const derivedFolderPath = segs.length > 1 ? segs.slice(0, -1).join('/') : '';
         const resolvedTitle = uploadFiles.length > 1 ? file.name : (metadata.title || file.name);
         const formData = new FormData();
         formData.append('file', file);
@@ -257,353 +307,551 @@ const Documents = () => {
         formData.append('folderPath', derivedFolderPath);
         formData.append('relativePath', relativePath);
 
-        const response = await axios.post(
-          `${import.meta.env.VITE_API_URL}/documents`,
-          formData,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            }
-          }
-        );
-
-        const createdDoc = mapDocument(response.data?.data?.document || {});
-        dispatch(uploadDocumentSuccess(createdDoc));
-        dispatch(addNotification({
-          id: Date.now() + i,
-          type: 'success',
-          message: `${file.name} uploaded successfully`,
-          read: false,
-          timestamp: new Date().toISOString(),
-        }));
+        const response = await axios.post(`${import.meta.env.VITE_API_URL}/documents`, formData, {
+          headers: authHeaders(),
+        });
+        dispatch(uploadDocumentSuccess(mapDocument(response.data?.data?.document || {})));
+        dispatch(addNotification({ id: Date.now() + i, type: 'success', message: `${file.name} uploaded successfully`, read: false, timestamp: new Date().toISOString() }));
       }
-
       setShowUploadModal(false);
       setUploadFiles([]);
       setMetadata({ title: '', description: '', type: 'General' });
       setCurrentPage(1);
       fetchDocuments(1);
     } catch (err) {
-      console.error('Upload failed:', err);
-      const errorMessage =
-        err?.response?.data?.message ||
-        err?.response?.data?.error?.message ||
-        err?.message ||
-        'Upload failed. Please try again.';
-
-      dispatch(uploadDocumentFailure(errorMessage));
-      dispatch(addNotification({
-        id: Date.now(),
-        type: 'error',
-        message: `Upload failed: ${errorMessage}`,
-        read: false,
-        timestamp: new Date().toISOString(),
-      }));
+      const msg = err?.response?.data?.message || err?.message || 'Upload failed.';
+      dispatch(uploadDocumentFailure(msg));
+      dispatch(addNotification({ id: Date.now(), type: 'error', message: `Upload failed: ${msg}`, read: false, timestamp: new Date().toISOString() }));
     }
   };
 
-  const fetchDocumentBlob = async (doc, disposition = 'attachment') => {
-    if (!doc?.id) {
-      throw new Error('Document identifier is missing. Refresh and try again.');
+  // ── Video multipart upload ────────────────────────────────────────────────
+  const updateUploadState = (id, patch) => {
+    setVideoUploads(prev => prev.map(u => u.id === id ? { ...u, ...patch } : u));
+  };
+
+  /**
+   * Upload a single video file with chunked S3 multipart, supporting resume.
+   * uploadEntry: one item from videoUploads array
+   * meta: { title, description, category }
+   */
+  const uploadOneVideo = async (uploadEntry, meta) => {
+    const { id, file } = uploadEntry;
+    const abort = new AbortController();
+    updateUploadState(id, { abortController: abort, status: UPLOAD_STATUS.HASHING });
+
+    // 1. Compute SHA-256
+    let checksum;
+    try {
+      checksum = await computeSHA256(file);
+    } catch {
+      checksum = null;
     }
+
+    // 2. Check if this is a resume (videoId already assigned)
+    let videoId = uploadEntry.videoId;
+    let s3UploadId = uploadEntry.uploadId;
+    let storageKey = uploadEntry.storageKey;
+    let totalParts = uploadEntry.totalParts || Math.ceil(file.size / CHUNK_SIZE);
+    let completedParts = [...(uploadEntry.uploadedParts || [])];
+
+    updateUploadState(id, { status: UPLOAD_STATUS.INITIATING });
 
     try {
-      const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}/documents/${doc.id}/download`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          params: { disposition, proxy: true },
-          responseType: 'blob',
-        }
-      );
-
-      const contentType = response.headers['content-type'] || doc.mimeType || 'application/octet-stream';
-      return new Blob([response.data], { type: contentType });
-    } catch (error) {
-      if (error?.response?.data instanceof Blob) {
-        const errorText = await error.response.data.text();
-        try {
-          const parsed = JSON.parse(errorText);
-          throw new Error(parsed?.message || 'Failed to load document content.');
-        } catch {
-          const extractedMessage = errorText.match(/"message"\s*:\s*"([^"]+)"/)?.[1];
-          throw new Error(extractedMessage || errorText || 'Failed to load document content.');
-        }
+      if (!videoId) {
+        // Initiate new upload
+        const initRes = await axios.post(
+          `${import.meta.env.VITE_API_URL}/videos/initiate`,
+          {
+            fileName: file.name,
+            mimeType: file.type || 'video/mp4',
+            fileSize: file.size,
+            title: meta.title || file.name.replace(/\.[^.]+$/, ''),
+            description: meta.description || '',
+            category: meta.category || 'General',
+          },
+          { headers: authHeaders(), signal: abort.signal },
+        );
+        const d = initRes.data.data;
+        videoId = d.videoId;
+        s3UploadId = d.uploadId;
+        storageKey = d.storageKey;
+        totalParts = d.totalParts;
+        completedParts = [];
+        updateUploadState(id, { videoId, uploadId: s3UploadId, storageKey, totalParts, uploadedParts: [] });
+      } else {
+        // Resume: fetch already-uploaded parts
+        const partsRes = await axios.get(
+          `${import.meta.env.VITE_API_URL}/videos/${videoId}/parts`,
+          { headers: authHeaders(), signal: abort.signal },
+        );
+        completedParts = partsRes.data.data.parts || completedParts;
+        updateUploadState(id, { uploadedParts: completedParts });
       }
 
-      throw error;
+      updateUploadState(id, { status: UPLOAD_STATUS.UPLOADING });
+
+      const completedPartNumbers = new Set(completedParts.map(p => p.PartNumber));
+
+      // 3. Upload each missing part
+      for (let partNumber = 1; partNumber <= totalParts; partNumber++) {
+        if (abort.signal.aborted) throw new Error('aborted');
+        if (completedPartNumbers.has(partNumber)) {
+          // Already uploaded — update progress
+          updateUploadState(id, { progress: Math.round((partNumber / totalParts) * 95) });
+          continue;
+        }
+
+        const start = (partNumber - 1) * CHUNK_SIZE;
+        const end = Math.min(start + CHUNK_SIZE, file.size);
+        const chunk = file.slice(start, end);
+
+        // Get signed URL for this part
+        const urlRes = await axios.get(
+          `${import.meta.env.VITE_API_URL}/videos/${videoId}/part-url`,
+          { headers: authHeaders(), params: { partNumber }, signal: abort.signal },
+        );
+        const presignedUrl = urlRes.data.data.url;
+
+        // PUT directly to S3
+        const putRes = await axios.put(presignedUrl, chunk, {
+          headers: { 'Content-Type': file.type || 'application/octet-stream' },
+          signal: abort.signal,
+          onUploadProgress: (evt) => {
+            const partProgress = evt.loaded / evt.total;
+            const overall = ((partNumber - 1 + partProgress) / totalParts) * 95;
+            updateUploadState(id, { progress: Math.round(overall) });
+          },
+        });
+
+        const etag = putRes.headers['etag'] || putRes.headers['ETag'];
+        completedParts.push({ PartNumber: partNumber, ETag: etag });
+        updateUploadState(id, { uploadedParts: [...completedParts] });
+      }
+
+      // 4. Complete
+      updateUploadState(id, { status: UPLOAD_STATUS.COMPLETING, progress: 97 });
+
+      await axios.post(
+        `${import.meta.env.VITE_API_URL}/videos/${videoId}/complete`,
+        { parts: completedParts, checksum },
+        { headers: authHeaders(), signal: abort.signal },
+      );
+
+      updateUploadState(id, { status: UPLOAD_STATUS.DONE, progress: 100 });
+      dispatch(addNotification({ id: Date.now(), type: 'success', message: `${file.name} uploaded successfully`, read: false, timestamp: new Date().toISOString() }));
+
+    } catch (err) {
+      if (err.name === 'CanceledError' || err.message === 'aborted') {
+        updateUploadState(id, { status: UPLOAD_STATUS.ABORTED, progress: 0 });
+      } else {
+        const msg = err?.response?.data?.message || err?.message || 'Upload failed';
+        updateUploadState(id, { status: UPLOAD_STATUS.ERROR, error: msg });
+        dispatch(addNotification({ id: Date.now(), type: 'error', message: `Video upload failed: ${msg}`, read: false, timestamp: new Date().toISOString() }));
+      }
+    } finally {
+      videoUploadQueue.current = videoUploadQueue.current.filter(i => i !== id);
     }
+  };
+
+  const handleVideoUpload = async () => {
+    const queued = videoUploads.filter(u => u.status === UPLOAD_STATUS.QUEUED);
+    if (!queued.length) return;
+
+    const currentActive = videoUploads.filter(u => [UPLOAD_STATUS.UPLOADING, UPLOAD_STATUS.INITIATING, UPLOAD_STATUS.HASHING].includes(u.status)).length;
+    const slots = MAX_CONCURRENT_VIDEO_UPLOADS - currentActive;
+    if (slots <= 0) {
+      dispatch(addNotification({ id: Date.now(), type: 'error', message: `Max ${MAX_CONCURRENT_VIDEO_UPLOADS} concurrent uploads. Wait for one to finish.`, read: false, timestamp: new Date().toISOString() }));
+      return;
+    }
+
+    const batch = queued.slice(0, slots);
+    const meta = { ...videoMetadata };
+
+    batch.forEach(entry => {
+      videoUploadQueue.current.push(entry.id);
+      uploadOneVideo(entry, meta).then(() => {
+        fetchVideos(videoPage);
+      });
+    });
+  };
+
+  const handleResumeVideo = (entry) => {
+    if (![UPLOAD_STATUS.ERROR, UPLOAD_STATUS.ABORTED].includes(entry.status)) return;
+    updateUploadState(entry.id, { status: UPLOAD_STATUS.QUEUED, error: null, progress: 0 });
+    const meta = { ...videoMetadata };
+    videoUploadQueue.current.push(entry.id);
+    uploadOneVideo({ ...entry, status: UPLOAD_STATUS.QUEUED, error: null }, meta).then(() => fetchVideos(videoPage));
+  };
+
+  const handleAbortVideo = async (entry) => {
+    if (entry.abortController) entry.abortController.abort();
+    if (entry.videoId) {
+      try {
+        await axios.post(`${import.meta.env.VITE_API_URL}/videos/${entry.videoId}/abort`, {}, { headers: authHeaders() });
+      } catch (_) {}
+    }
+    updateUploadState(entry.id, { status: UPLOAD_STATUS.ABORTED, progress: 0 });
+  };
+
+  const removeVideoUploadEntry = (id) => {
+    setVideoUploads(prev => prev.filter(u => u.id !== id));
+  };
+
+  // ── Document actions ──────────────────────────────────────────────────────
+  const fetchDocumentBlob = async (doc, disposition = 'attachment') => {
+    const response = await axios.get(
+      `${import.meta.env.VITE_API_URL}/documents/${doc.id}/download`,
+      { headers: authHeaders(), params: { disposition, proxy: true }, responseType: 'blob' },
+    );
+    const ct = response.headers['content-type'] || doc.mimeType || 'application/octet-stream';
+    return new Blob([response.data], { type: ct });
   };
 
   const handleDownload = async (doc) => {
     try {
       const blob = await fetchDocumentBlob(doc, 'attachment');
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const link = globalThis.document.createElement('a');
-      link.href = downloadUrl;
-      link.download = doc?.title || doc?.name || 'document';
-      globalThis.document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(downloadUrl);
-    } catch (error) {
-      console.error('Error downloading document:', error);
-      alert(error.response?.data?.message || error.message || 'Failed to download document');
-    }
+      const url = window.URL.createObjectURL(blob);
+      const a = globalThis.document.createElement('a');
+      a.href = url; a.download = doc?.title || 'document';
+      globalThis.document.body.appendChild(a); a.click(); a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (e) { alert(e.response?.data?.message || e.message || 'Download failed'); }
   };
 
   const handleView = async (doc) => {
     try {
       const blob = await fetchDocumentBlob(doc, 'inline');
-      const viewUrl = window.URL.createObjectURL(blob);
-      window.open(viewUrl, '_blank', 'noopener,noreferrer');
-      setTimeout(() => window.URL.revokeObjectURL(viewUrl), 60000);
-    } catch (error) {
-      console.error('Error viewing document:', error);
-      const message = error.response?.data?.message || error.message || 'Failed to view document';
-
-      // If preview is blocked for corrupted PDFs, automatically fallback to download.
-      if (message.toLowerCase().includes('cannot be previewed') || message.toLowerCase().includes('corrupted')) {
-        const shouldDownload = window.confirm(`${message}\n\nWould you like to download this file instead?`);
-        if (shouldDownload) {
-          await handleDownload(doc);
-          return;
-        }
-      }
-
-      alert(message);
+      const url = window.URL.createObjectURL(blob);
+      window.open(url, '_blank', 'noopener,noreferrer');
+      setTimeout(() => window.URL.revokeObjectURL(url), 60000);
+    } catch (e) {
+      const msg = e.response?.data?.message || e.message || 'Preview failed';
+      if (msg.toLowerCase().includes('cannot be previewed') || msg.toLowerCase().includes('corrupted')) {
+        if (window.confirm(`${msg}\n\nDownload instead?`)) await handleDownload(doc);
+      } else { alert(msg); }
     }
   };
 
-  const handleShare = async (doc) => {
-    setShareTargetDocument(doc);
-    setShowShareModal(true);
-  };
+  const handleShare = (doc) => { setShareTargetDocument(doc); setShowShareModal(true); };
 
   const handleDelete = async (doc) => {
-    if (!window.confirm('Are you sure you want to delete this document?')) return;
-
+    if (!window.confirm('Delete this document?')) return;
     try {
-      await axios.delete(
-        `${import.meta.env.VITE_API_URL}/documents/${doc.id}`,
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
-
+      await axios.delete(`${import.meta.env.VITE_API_URL}/documents/${doc.id}`, { headers: authHeaders() });
       dispatch(deleteDocument(doc.id));
-      const nextTotal = Math.max(0, totalDocuments - 1);
-      const nextPages = Math.max(1, Math.ceil(nextTotal / pageSize));
-      setTotalDocuments(nextTotal);
-      setTotalPages(nextPages);
-
-      if (currentPage > nextPages) {
-        setCurrentPage(nextPages);
-      } else {
-        fetchDocuments(currentPage);
-      }
-
-      dispatch(addNotification({
-        id: Date.now(),
-        type: 'success',
-        message: 'Document deleted successfully',
-        read: false,
-        timestamp: new Date().toISOString(),
-      }));
-    } catch (error) {
-      console.error('Error deleting document:', error);
-      alert(error.response?.data?.message || 'Failed to delete document');
-    }
+      const next = Math.max(0, totalDocuments - 1);
+      const pages = Math.max(1, Math.ceil(next / pageSize));
+      setTotalDocuments(next); setTotalPages(pages);
+      if (currentPage > pages) setCurrentPage(pages);
+      else fetchDocuments(currentPage);
+      dispatch(addNotification({ id: Date.now(), type: 'success', message: 'Document deleted', read: false, timestamp: new Date().toISOString() }));
+    } catch (e) { alert(e.response?.data?.message || 'Delete failed'); }
   };
 
+  // ── Video actions ─────────────────────────────────────────────────────────
+  const handleVideoDownload = async (video) => {
+    try {
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/videos/${video._id}/download`, { headers: authHeaders() });
+      window.open(res.data.data.url, '_blank', 'noopener,noreferrer');
+    } catch (e) { alert(e.response?.data?.message || 'Download failed'); }
+  };
+
+  const handleVideoDelete = async (video) => {
+    if (!window.confirm(`Delete "${video.title}"?`)) return;
+    try {
+      await axios.delete(`${import.meta.env.VITE_API_URL}/videos/${video._id}`, { headers: authHeaders() });
+      dispatch(addNotification({ id: Date.now(), type: 'success', message: 'Video deleted', read: false, timestamp: new Date().toISOString() }));
+      fetchVideos(videoPage);
+    } catch (e) { alert(e.response?.data?.message || 'Delete failed'); }
+  };
+
+  // ── Upload status badge helpers ───────────────────────────────────────────
+  const statusLabel = (s) => ({
+    [UPLOAD_STATUS.QUEUED]:     'Queued',
+    [UPLOAD_STATUS.HASHING]:    'Verifying…',
+    [UPLOAD_STATUS.INITIATING]: 'Initiating…',
+    [UPLOAD_STATUS.UPLOADING]:  'Uploading',
+    [UPLOAD_STATUS.COMPLETING]: 'Completing…',
+    [UPLOAD_STATUS.DONE]:       'Done',
+    [UPLOAD_STATUS.ERROR]:      'Error',
+    [UPLOAD_STATUS.ABORTED]:    'Aborted',
+  }[s] || s);
+
+  const statusColor = (s) => ({
+    [UPLOAD_STATUS.DONE]:    '#22c55e',
+    [UPLOAD_STATUS.ERROR]:   '#ef4444',
+    [UPLOAD_STATUS.ABORTED]: '#f59e0b',
+  }[s] || 'var(--primary)');
+
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="documents-page">
+      {/* ── Page header ── */}
       <div className="page-header">
         <div>
           <h1>My Documents</h1>
-          <p className="subtitle">Manage and organize your files</p>
+          <p className="subtitle">Manage and organise your files &amp; videos</p>
         </div>
-        <button className="btn-primary" onClick={() => setShowUploadModal(true)}>
+        <button
+          className="btn-primary"
+          onClick={() => activeTab === 'files' ? setShowUploadModal(true) : setShowVideoModal(true)}
+        >
           <Upload size={20} />
-          Upload Documents
+          {activeTab === 'files' ? 'Upload Documents' : 'Upload Videos'}
         </button>
       </div>
 
-      <SearchBar />
-      <div className="documents-view-toggle" style={{ marginTop: '0.75rem', marginBottom: '0.5rem' }}>
+      {/* ── Tabs ── */}
+      <div className="docs-tab-bar">
         <button
-          className={`btn-secondary ${contentView === 'folders' ? 'active' : ''}`}
-          onClick={() => setContentView('folders')}
-          type="button"
+          className={`docs-tab ${activeTab === 'files' ? 'active' : ''}`}
+          onClick={() => setActiveTab('files')}
         >
-          Folder View
+          <FileText size={16} /> Files
         </button>
         <button
-          className={`btn-secondary ${contentView === 'flat' ? 'active' : ''}`}
-          onClick={() => setContentView('flat')}
-          type="button"
-          style={{ marginLeft: '0.5rem' }}
+          className={`docs-tab ${activeTab === 'videos' ? 'active' : ''}`}
+          onClick={() => setActiveTab('videos')}
         >
-          Flat View
+          <Film size={16} /> Videos
         </button>
       </div>
 
-      {contentView === 'folders' ? (
-        <FolderBrowser
-          documents={documents}
-          onDownload={handleDownload}
-          onShare={handleShare}
-          onDelete={handleDelete}
-          onView={handleView}
-        />
-      ) : (
-        <DocumentList
-          documents={documents}
-          onDownload={handleDownload}
-          onShare={handleShare}
-          onDelete={handleDelete}
-          onView={handleView}
-        />
+      {/* ══════════════════════════════ FILES TAB ══════════════════════════ */}
+      {activeTab === 'files' && (
+        <>
+          <SearchBar />
+          <div className="documents-view-toggle" style={{ marginTop: '0.75rem', marginBottom: '0.5rem' }}>
+            <button className={`btn-secondary ${contentView === 'folders' ? 'active' : ''}`} onClick={() => setContentView('folders')} type="button">
+              Folder View
+            </button>
+            <button className={`btn-secondary ${contentView === 'flat' ? 'active' : ''}`} onClick={() => setContentView('flat')} type="button" style={{ marginLeft: '0.5rem' }}>
+              Flat View
+            </button>
+          </div>
+
+          {contentView === 'folders' ? (
+            <FolderBrowser documents={documents} onDownload={handleDownload} onShare={handleShare} onDelete={handleDelete} onView={handleView} />
+          ) : (
+            <DocumentList documents={documents} onDownload={handleDownload} onShare={handleShare} onDelete={handleDelete} onView={handleView} />
+          )}
+
+          <div className="documents-pagination">
+            <button type="button" className="btn-secondary" disabled={currentPage <= 1 || isLoading} onClick={() => setCurrentPage(p => Math.max(1, p - 1))}>Previous</button>
+            <span className="pagination-info">Page {currentPage} of {totalPages} • {totalDocuments} total files</span>
+            <button type="button" className="btn-secondary" disabled={currentPage >= totalPages || isLoading} onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}>Next</button>
+          </div>
+        </>
       )}
 
-      <div className="documents-pagination">
-        <button
-          type="button"
-          className="btn-secondary"
-          disabled={currentPage <= 1 || isLoading}
-          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-        >
-          Previous
-        </button>
-        <span className="pagination-info">
-          Page {currentPage} of {totalPages} • {totalDocuments} total files
-        </span>
-        <button
-          type="button"
-          className="btn-secondary"
-          disabled={currentPage >= totalPages || isLoading}
-          onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-        >
-          Next
-        </button>
-      </div>
+      {/* ══════════════════════════════ VIDEOS TAB ═════════════════════════ */}
+      {activeTab === 'videos' && (
+        <>
+          {videos.length === 0 ? (
+            <div className="empty-state" style={{ textAlign: 'center', padding: '3rem', color: 'var(--gray-500)' }}>
+              <Film size={48} style={{ marginBottom: '1rem', opacity: 0.4 }} />
+              <p>No videos yet. Click <strong>Upload Videos</strong> to get started.</p>
+            </div>
+          ) : (
+            <div className="video-grid">
+              {videos.map(v => (
+                <div key={v._id} className="video-card">
+                  <div className="video-card-icon"><Film size={32} /></div>
+                  <div className="video-card-body">
+                    <p className="video-card-title" title={v.title}>{v.title}</p>
+                    <p className="video-card-meta">{v.fileSizeFormatted || formatFileSize(v.fileSize)} · {v.fileExtension?.toUpperCase()}</p>
+                    {v.checksum && <p className="video-card-hash" title={`SHA-256: ${v.checksum}`}>SHA-256: {v.checksum.slice(0, 12)}…</p>}
+                  </div>
+                  <div className="video-card-actions">
+                    <button className="btn-secondary btn-sm" onClick={() => handleVideoDownload(v)}>Download</button>
+                    <button className="btn-danger btn-sm" onClick={() => handleVideoDelete(v)}>Delete</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
+          <div className="documents-pagination">
+            <button type="button" className="btn-secondary" disabled={videoPage <= 1} onClick={() => setVideoPage(p => Math.max(1, p - 1))}>Previous</button>
+            <span className="pagination-info">Page {videoPage} of {videoTotalPages} • {videoTotal} total videos</span>
+            <button type="button" className="btn-secondary" disabled={videoPage >= videoTotalPages} onClick={() => setVideoPage(p => Math.min(videoTotalPages, p + 1))}>Next</button>
+          </div>
+        </>
+      )}
+
+      {/* ══════════════════════════════ DOC UPLOAD MODAL ═══════════════════ */}
       {showUploadModal && (
         <div className="modal-overlay" onClick={() => setShowUploadModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>Upload Documents</h2>
-              <button className="close-btn" onClick={() => setShowUploadModal(false)}>
-                <X size={24} />
-              </button>
+              <button className="close-btn" onClick={() => setShowUploadModal(false)}><X size={24} /></button>
             </div>
-
             <div className="modal-body">
               <div {...getRootProps()} className={`dropzone ${isDragActive ? 'active' : ''}`}>
                 <input {...getInputProps()} />
                 <Upload size={48} />
-                <p className="dropzone-text">
-                  {isDragActive ? 'Drop files here...' : 'Drag & drop files here, or click to select'}
-                </p>
-                <p className="dropzone-hint">Supports folders/files: max 100 files, max 150MB per file</p>
+                <p className="dropzone-text">{isDragActive ? 'Drop files here…' : 'Drag & drop files, or click to select'}</p>
+                <p className="dropzone-hint">PDF, Word, Excel, Images, ZIP — max 100 files, 150 MB each</p>
               </div>
 
               <div style={{ marginTop: '0.75rem', display: 'flex', justifyContent: 'center' }}>
-                <button type="button" className="btn-secondary" onClick={handleFolderPick}>
-                  Select Folder
-                </button>
-                <input
-                  ref={folderInputRef}
-                  type="file"
-                  style={{ display: 'none' }}
-                  onChange={handleFolderSelection}
-                  multiple
-                  webkitdirectory=""
-                  directory=""
-                />
+                <button type="button" className="btn-secondary" onClick={() => folderInputRef.current?.click()}>Select Folder</button>
+                <input ref={folderInputRef} type="file" style={{ display: 'none' }} onChange={e => { applyDocFileSelection(e.target.files); e.target.value = ''; }} multiple webkitdirectory="" directory="" />
               </div>
 
               {uploadFiles.length > 0 && (
                 <div className="selected-files">
-                  <h3>Selected Files ({uploadFiles.length})</h3>
-                  <ul>
-                    {uploadFiles.map((file, index) => (
-                      <li key={index}>
-                        {file.name} - {(file.size / 1024 / 1024).toFixed(2)} MB
-                      </li>
-                    ))}
-                  </ul>
+                  <h3>Selected ({uploadFiles.length})</h3>
+                  <ul>{uploadFiles.map((f, i) => <li key={i}>{f.name} — {(f.size / 1024 / 1024).toFixed(2)} MB</li>)}</ul>
                 </div>
               )}
 
               <div className="metadata-form">
                 <div className="form-group">
                   <label>Title</label>
-                  <input
-                    type="text"
-                    value={metadata.title}
-                    onChange={(e) => setMetadata({ ...metadata, title: e.target.value })}
-                    placeholder="Document title"
-                  />
+                  <input type="text" value={metadata.title} onChange={e => setMetadata({ ...metadata, title: e.target.value })} placeholder="Document title" />
                 </div>
-
                 <div className="form-group">
                   <label>Description</label>
-                  <textarea
-                    value={metadata.description}
-                    onChange={(e) => setMetadata({ ...metadata, description: e.target.value })}
-                    placeholder="Brief description (optional)"
-                    rows="3"
-                  />
+                  <textarea value={metadata.description} onChange={e => setMetadata({ ...metadata, description: e.target.value })} placeholder="Optional description" rows="3" />
                 </div>
-
                 <div className="form-group">
                   <label>Document Type</label>
-                  <select
-                    value={metadata.type}
-                    onChange={(e) => setMetadata({ ...metadata, type: e.target.value })}
-                  >
-                    {documentTypes.map(type => (
-                      <option key={type} value={type}>{type}</option>
-                    ))}
+                  <select value={metadata.type} onChange={e => setMetadata({ ...metadata, type: e.target.value })}>
+                    {DOCUMENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
               </div>
 
               {isUploading && (
                 <div className="upload-progress">
-                  <div className="progress-bar">
-                    <div className="progress-fill" style={{ width: `${uploadProgress}%` }} />
-                  </div>
-                  <p>Uploading... {uploadProgress}%</p>
+                  <div className="progress-bar"><div className="progress-fill" style={{ width: `${uploadProgress}%` }} /></div>
+                  <p>Uploading… {uploadProgress}%</p>
                 </div>
               )}
             </div>
-
             <div className="modal-footer">
-              <button className="btn-secondary" onClick={() => setShowUploadModal(false)}>
-                Cancel
-              </button>
-              <button
-                className="btn-primary"
-                onClick={handleUpload}
-                disabled={uploadFiles.length === 0 || isUploading}
-              >
-                {isUploading ? 'Uploading...' : 'Upload'}
+              <button className="btn-secondary" onClick={() => setShowUploadModal(false)}>Cancel</button>
+              <button className="btn-primary" onClick={handleDocUpload} disabled={!uploadFiles.length || isUploading}>
+                {isUploading ? 'Uploading…' : 'Upload'}
               </button>
             </div>
           </div>
         </div>
       )}
 
+      {/* ══════════════════════════════ VIDEO UPLOAD MODAL ═════════════════ */}
+      {showVideoModal && (
+        <div className="modal-overlay" onClick={() => setShowVideoModal(false)}>
+          <div className="modal-content modal-content--wide" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Upload Videos</h2>
+              <button className="close-btn" onClick={() => setShowVideoModal(false)}><X size={24} /></button>
+            </div>
+            <div className="modal-body">
+
+              {/* Concurrent cap notice */}
+              <p className="upload-notice">
+                Max <strong>{MAX_CONCURRENT_VIDEO_UPLOADS} concurrent uploads</strong> per user · Max <strong>1.5 GB</strong> per file ·
+                Accepted: MP4, MOV, AVI, MKV, WebM, 3GP, MPEG
+              </p>
+
+              {/* Dropzone */}
+              <div {...getVideoRootProps()} className={`dropzone ${isVideoDragActive ? 'active' : ''}`}>
+                <input {...getVideoInputProps()} />
+                <Film size={48} />
+                <p className="dropzone-text">{isVideoDragActive ? 'Drop videos here…' : 'Drag & drop video files, or click to select'}</p>
+                <p className="dropzone-hint">Resumable chunked upload — safe to close and resume later</p>
+              </div>
+
+              {/* Metadata */}
+              <div className="metadata-form" style={{ marginTop: '1rem' }}>
+                <div className="form-group">
+                  <label>Title</label>
+                  <input type="text" value={videoMetadata.title} onChange={e => setVideoMetadata(p => ({ ...p, title: e.target.value }))} placeholder="Video title (optional)" />
+                </div>
+                <div className="form-group">
+                  <label>Description</label>
+                  <textarea value={videoMetadata.description} onChange={e => setVideoMetadata(p => ({ ...p, description: e.target.value }))} placeholder="Optional description" rows="2" />
+                </div>
+                <div className="form-group">
+                  <label>Category</label>
+                  <select value={videoMetadata.category} onChange={e => setVideoMetadata(p => ({ ...p, category: e.target.value }))}>
+                    {DOCUMENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {/* Per-file upload list */}
+              {videoUploads.length > 0 && (
+                <div className="video-upload-list">
+                  {videoUploads.map(u => (
+                    <div key={u.id} className="video-upload-item">
+                      <div className="vui-header">
+                        <span className="vui-name" title={u.file.name}>{u.file.name}</span>
+                        <span className="vui-size">{formatFileSize(u.file.size)}</span>
+                        <span className="vui-status" style={{ color: statusColor(u.status) }}>{statusLabel(u.status)}</span>
+                        <div className="vui-actions">
+                          {[UPLOAD_STATUS.ERROR, UPLOAD_STATUS.ABORTED].includes(u.status) && (
+                            <button type="button" className="btn-icon" title="Resume" onClick={() => handleResumeVideo(u)}><RotateCcw size={15} /></button>
+                          )}
+                          {[UPLOAD_STATUS.UPLOADING, UPLOAD_STATUS.INITIATING, UPLOAD_STATUS.HASHING].includes(u.status) && (
+                            <button type="button" className="btn-icon btn-icon--danger" title="Abort" onClick={() => handleAbortVideo(u)}><X size={15} /></button>
+                          )}
+                          {[UPLOAD_STATUS.DONE, UPLOAD_STATUS.ERROR, UPLOAD_STATUS.ABORTED, UPLOAD_STATUS.QUEUED].includes(u.status) && (
+                            <button type="button" className="btn-icon" title="Remove" onClick={() => removeVideoUploadEntry(u.id)}><X size={15} /></button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Progress bar */}
+                      {u.status !== UPLOAD_STATUS.QUEUED && u.status !== UPLOAD_STATUS.DONE && (
+                        <div className="progress-bar" style={{ marginTop: '0.4rem' }}>
+                          <div className="progress-fill" style={{ width: `${u.progress}%`, background: statusColor(u.status) }} />
+                        </div>
+                      )}
+                      {u.status === UPLOAD_STATUS.DONE && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.3rem', color: '#22c55e', fontSize: '0.8rem' }}>
+                          <CheckCircle2 size={14} /> Complete
+                        </div>
+                      )}
+                      {u.status === UPLOAD_STATUS.ERROR && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.3rem', color: '#ef4444', fontSize: '0.8rem' }}>
+                          <AlertCircle size={14} /> {u.error}
+                        </div>
+                      )}
+                      {u.status === UPLOAD_STATUS.UPLOADING && (
+                        <p style={{ fontSize: '0.78rem', color: 'var(--gray-500)', marginTop: '0.2rem' }}>
+                          {u.progress}% · Part {u.uploadedParts.length} of {u.totalParts}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="modal-footer">
+              <button className="btn-secondary" onClick={() => setShowVideoModal(false)}>Close</button>
+              <button
+                className="btn-primary"
+                onClick={handleVideoUpload}
+                disabled={!videoUploads.some(u => u.status === UPLOAD_STATUS.QUEUED)}
+              >
+                Start Upload
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════ SHARE MODAL ════════════════════════ */}
       {showShareModal && shareTargetDocument && (
         <div className="modal-overlay" onClick={() => setShowShareModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <ShareDocument
-              document={shareTargetDocument}
-              onClose={() => setShowShareModal(false)}
-              onShared={() => fetchDocuments(currentPage)}
-            />
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <ShareDocument document={shareTargetDocument} onClose={() => setShowShareModal(false)} onShared={() => fetchDocuments(currentPage)} />
           </div>
         </div>
       )}
