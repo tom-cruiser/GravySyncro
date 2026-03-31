@@ -15,13 +15,14 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import { useSelector } from 'react-redux';
-import api from '../config/api';
 import AdminUsers from '../components/AdminUsers';
 import AdminTenants from '../components/AdminTenants';
 import AdminActivityLogs from '../components/AdminActivityLogs';
 import AdminMessages from '../components/AdminMessages';
 import SystemHealth from '../components/SystemHealth';
 import './AdminDashboard.css';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
 
 const AdminDashboard = () => {
   const { t } = useTranslation();
@@ -44,7 +45,7 @@ const AdminDashboard = () => {
 
   const fetchDashboardStats = async () => {
     try {
-      const response = await axios.get(api.endpoints.admin.dashboardStats(), {
+      const response = await axios.get(`${API_URL}/admin/dashboard/stats`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setStats(response.data.data);

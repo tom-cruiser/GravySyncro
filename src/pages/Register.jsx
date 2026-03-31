@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
-import { registerStart, registerSuccess, registerFailure } from '../features/auth/authSlice';
+import { useNavigate, Link } from 'react-router-dom';
+import { Eye, EyeOff, Mail, Lock, User, Briefcase, Hash, AlertCircle, Loader2 } from 'lucide-react';
+import { registerStart, registerSuccess, registerFailure, clearError } from '../features/auth/authSlice';
+import api from '../config/api';
 import './Auth.css';
+
+const PASSWORD_RE = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -14,6 +18,9 @@ const Register = () => {
     confirmPassword: '',
     role: 'Student',
   });
+  const [showPassword, setShowPassword]        = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [clientError, setClientError]          = useState('');
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -22,29 +29,29 @@ const Register = () => {
   const roles = ['Student', 'Notary', 'Teacher', 'Lawyer', 'Professional'];
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    setClientError('');
+    dispatch(clearError());
+    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setClientError('');
 
+    // Client-side validation
     if (formData.password !== formData.confirmPassword) {
-      dispatch(registerFailure('Passwords do not match'));
+      setClientError('Passwords do not match.');
       return;
     }
-
-    if (formData.password.length < 8) {
-      dispatch(registerFailure('Password must be at least 8 characters'));
+    if (!PASSWORD_RE.test(formData.password)) {
+      setClientError('Password must be at least 8 characters and include uppercase, lowercase, and a number.');
       return;
     }
 
     dispatch(registerStart());
 
     try {
-      const response = await fetch('/api/v1/auth/register', {
+      const response = await fetch(api.endpoints.auth.register(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -60,15 +67,13 @@ const Register = () => {
       const data = await response.json();
 
       if (!response.ok) {
-        dispatch(registerFailure(data.message || 'Registration failed'));
+        dispatch(registerFailure(data.message || 'Registration failed. Please try again.'));
         return;
       }
 
       if (data.status === 'success') {
-        // Store tokens
         localStorage.setItem('token', data.token);
         localStorage.setItem('refreshToken', data.refreshToken);
-        
         dispatch(registerSuccess({
           user: data.data.user,
           token: data.token,
@@ -76,131 +81,230 @@ const Register = () => {
         }));
         navigate('/dashboard');
       } else {
-        dispatch(registerFailure(data.message || 'Registration failed'));
+        dispatch(registerFailure(data.message || 'Registration failed. Please try again.'));
       }
     } catch (err) {
       console.error('Registration error:', err);
-      dispatch(registerFailure('Network error. Please try again.'));
+      dispatch(registerFailure('Network error. Please check your connection and try again.'));
     }
   };
 
+  const displayError = clientError || error;
+  const passwordStrength = () => {
+    const p = formData.password;
+    if (!p) return null;
+    if (p.length < 6) return 'weak';
+    if (p.length < 8 || !/[A-Z]/.test(p) || !/\d/.test(p)) return 'fair';
+    if (PASSWORD_RE.test(p)) return 'strong';
+    return 'fair';
+  };
+  const strength = passwordStrength();
+
   return (
     <div className="auth-container">
-      <div className="auth-card">
+      <div className="auth-card auth-card-wide">
+
+        {/* ── Header ── */}
         <div className="auth-header">
-          <h1>GravySyncro</h1>
-          <p>Create Your Account</p>
+          <div className="auth-brand auth-brand-center">
+            <img src="/gravysyncro.jpg" alt="GravySyncro" className="auth-logo" />
+            <h1>GravySyncro</h1>
+          </div>
+          <p className="auth-tagline">Create your free account</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="auth-form">
+        {/* ── Form ── */}
+        <form onSubmit={handleSubmit} className="auth-form" noValidate>
           <h2>Sign Up</h2>
+          <p className="form-subtitle">Join thousands of teams collaborating on documents.</p>
 
-          {error && <div className="error-message">{error}</div>}
+          {/* Error banner */}
+          {displayError && (
+            <div className="alert alert-error" role="alert">
+              <AlertCircle size={16} />
+              <span>{displayError}</span>
+              <button
+                type="button"
+                className="alert-dismiss"
+                onClick={() => { setClientError(''); dispatch(clearError()); }}
+                aria-label="Dismiss"
+              >×</button>
+            </div>
+          )}
 
+          {/* Name row */}
           <div className="form-row">
             <div className="form-group">
               <label htmlFor="firstName">First Name</label>
-              <input
-                type="text"
-                id="firstName"
-                name="firstName"
-                value={formData.firstName}
-                onChange={handleChange}
-                required
-                placeholder="John"
-              />
+              <div className="input-wrapper">
+                <User size={16} className="input-icon" />
+                <input
+                  type="text"
+                  id="firstName"
+                  name="firstName"
+                  value={formData.firstName}
+                  onChange={handleChange}
+                  required
+                  placeholder="John"
+                  autoComplete="given-name"
+                  disabled={isLoading}
+                />
+              </div>
             </div>
-
             <div className="form-group">
               <label htmlFor="lastName">Last Name</label>
+              <div className="input-wrapper">
+                <User size={16} className="input-icon" />
+                <input
+                  type="text"
+                  id="lastName"
+                  name="lastName"
+                  value={formData.lastName}
+                  onChange={handleChange}
+                  required
+                  placeholder="Doe"
+                  autoComplete="family-name"
+                  disabled={isLoading}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Email */}
+          <div className="form-group">
+            <label htmlFor="email">Email Address</label>
+            <div className="input-wrapper">
+              <Mail size={16} className="input-icon" />
               <input
-                type="text"
-                id="lastName"
-                name="lastName"
-                value={formData.lastName}
+                type="email"
+                id="email"
+                name="email"
+                value={formData.email}
                 onChange={handleChange}
                 required
-                placeholder="Doe"
+                placeholder="your@email.com"
+                autoComplete="email"
+                disabled={isLoading}
               />
             </div>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="email">Email Address</label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              required
-              placeholder="your@email.com"
-            />
-          </div>
-
+          {/* Role */}
           <div className="form-group">
             <label htmlFor="role">Role</label>
-            <select
-              id="role"
-              name="role"
-              value={formData.role}
-              onChange={handleChange}
-              required
-            >
-              {roles.map(role => (
-                <option key={role} value={role}>{role}</option>
-              ))}
-            </select>
+            <div className="input-wrapper">
+              <Briefcase size={16} className="input-icon" />
+              <select
+                id="role"
+                name="role"
+                value={formData.role}
+                onChange={handleChange}
+                required
+                disabled={isLoading}
+              >
+                {roles.map(r => <option key={r} value={r}>{r}</option>)}
+              </select>
+            </div>
           </div>
 
+          {/* Org code */}
           <div className="form-group">
-            <label htmlFor="tenantId">Organization Code (optional)</label>
-            <input
-              type="text"
-              id="tenantId"
-              name="tenantId"
-              value={formData.tenantId}
-              onChange={handleChange}
-              placeholder="Example: tenant_abc123"
-            />
-            <small>Use the same code as your teammate to join the same organization.</small>
+            <label htmlFor="tenantId">Organization Code <span className="label-optional">(optional)</span></label>
+            <div className="input-wrapper">
+              <Hash size={16} className="input-icon" />
+              <input
+                type="text"
+                id="tenantId"
+                name="tenantId"
+                value={formData.tenantId}
+                onChange={handleChange}
+                placeholder="e.g. tenant_abc123"
+                disabled={isLoading}
+              />
+            </div>
+            <small>Share the same code as your teammates to join their organization.</small>
           </div>
 
+          {/* Password */}
           <div className="form-group">
             <label htmlFor="password">Password</label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              required
-              placeholder="••••••••"
-              minLength="8"
-            />
-            <small>Minimum 8 characters</small>
+            <div className="input-wrapper">
+              <Lock size={16} className="input-icon" />
+              <input
+                type={showPassword ? 'text' : 'password'}
+                id="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                required
+                placeholder="••••••••"
+                autoComplete="new-password"
+                disabled={isLoading}
+              />
+              <button
+                type="button"
+                className="input-action"
+                onClick={() => setShowPassword(v => !v)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            {/* Strength indicator */}
+            {strength && (
+              <div className="password-strength">
+                <div className={`strength-bar strength-${strength}`} />
+                <span className={`strength-label strength-${strength}`}>
+                  {strength === 'weak' ? 'Weak' : strength === 'fair' ? 'Fair' : 'Strong'}
+                </span>
+              </div>
+            )}
+            <small>Min. 8 characters with uppercase, lowercase, and a number.</small>
           </div>
 
+          {/* Confirm password */}
           <div className="form-group">
             <label htmlFor="confirmPassword">Confirm Password</label>
-            <input
-              type="password"
-              id="confirmPassword"
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              required
-              placeholder="••••••••"
-            />
+            <div className="input-wrapper">
+              <Lock size={16} className="input-icon" />
+              <input
+                type={showConfirmPassword ? 'text' : 'password'}
+                id="confirmPassword"
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                required
+                placeholder="••••••••"
+                autoComplete="new-password"
+                disabled={isLoading}
+              />
+              <button
+                type="button"
+                className="input-action"
+                onClick={() => setShowConfirmPassword(v => !v)}
+                aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+              >
+                {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            {/* Match indicator */}
+            {formData.confirmPassword && (
+              <small className={formData.password === formData.confirmPassword ? 'text-success' : 'text-error'}>
+                {formData.password === formData.confirmPassword ? '✓ Passwords match' : '✗ Passwords do not match'}
+              </small>
+            )}
           </div>
 
           <button type="submit" className="btn-primary" disabled={isLoading}>
-            {isLoading ? 'Creating Account...' : 'Create Account'}
+            {isLoading
+              ? <><Loader2 size={16} className="spin" /> Creating Account…</>
+              : 'Create Account'
+            }
           </button>
 
           <div className="auth-links">
             <span>Already have an account?</span>
-            <a href="/login">Sign In</a>
+            <Link to="/login">Sign In</Link>
           </div>
         </form>
       </div>

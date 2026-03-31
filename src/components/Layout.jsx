@@ -11,7 +11,8 @@ import {
   LogOut, 
   Menu, 
   X,
-  Bell
+  Bell,
+  CreditCard
 } from 'lucide-react';
 import { logout } from '../features/auth/authSlice';
 import { setUnreadCount } from '../features/notifications/notificationsSlice';
@@ -62,6 +63,7 @@ const Layout = () => {
     { path: '/documents', icon: FileText, label: t('navigation.documents') },
     { path: '/profile', icon: User, label: t('navigation.profile') },
     { path: '/support', icon: HelpCircle, label: t('navigation.support') },
+    { path: '/billing', icon: CreditCard, label: 'Billing' },
   ];
 
   // Add admin link if user is Admin

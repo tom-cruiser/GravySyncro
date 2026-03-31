@@ -1,19 +1,22 @@
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { loginStart, loginSuccess, loginFailure, requireTwoFactor } from '../features/auth/authSlice';
+import { Eye, EyeOff, Mail, Lock, ShieldCheck, AlertCircle, Loader2 } from 'lucide-react';
+import { loginStart, loginSuccess, loginFailure, requireTwoFactor, clearError } from '../features/auth/authSlice';
 import LanguageSelector from '../components/LanguageSelector';
+import api from '../config/api';
 import './Auth.css';
 
 const Login = () => {
   const { t } = useTranslation();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail]               = useState('');
+  const [password, setPassword]         = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [twoFactorCode, setTwoFactorCode] = useState('');
-  
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
+
+  const dispatch  = useDispatch();
+  const navigate  = useNavigate();
   const { isLoading, error, twoFactorRequired } = useSelector(state => state.auth);
 
   const handleSubmit = async (e) => {
@@ -21,32 +24,30 @@ const Login = () => {
     dispatch(loginStart());
 
     try {
-      // Build request body - only include twoFactorCode if it has a value
-      const requestBody = { email, password };
-      if (twoFactorCode) {
-        requestBody.twoFactorCode = twoFactorCode;
-      }
+      const body = { email, password };
+      if (twoFactorRequired && twoFactorCode) body.twoFactorCode = twoFactorCode;
 
-      const response = await fetch('/api/v1/auth/login', {
+      const response = await fetch(api.endpoints.auth.login(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody),
+        body: JSON.stringify(body),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        dispatch(loginFailure(data.message || 'Login failed'));
+        dispatch(loginFailure(data.message || 'Login failed. Please check your credentials.'));
         return;
       }
 
       if (data.requiresTwoFactor && !twoFactorCode) {
         dispatch(requireTwoFactor());
-      } else if (data.status === 'success') {
-        // Store token in localStorage
+        return;
+      }
+
+      if (data.status === 'success') {
         localStorage.setItem('token', data.token);
         localStorage.setItem('refreshToken', data.refreshToken);
-        
         dispatch(loginSuccess({
           user: data.data.user,
           token: data.token,
@@ -54,79 +55,138 @@ const Login = () => {
         }));
         navigate('/dashboard');
       } else {
-        dispatch(loginFailure(data.message || 'Login failed'));
+        dispatch(loginFailure(data.message || 'Login failed. Please try again.'));
       }
     } catch (err) {
       console.error('Login error:', err);
-      dispatch(loginFailure('Network error. Please try again.'));
+      dispatch(loginFailure('Network error. Please check your connection and try again.'));
     }
   };
 
   return (
     <div className="auth-container">
       <div className="auth-card">
+
+        {/* ── Header ── */}
         <div className="auth-header">
           <div className="auth-header-top">
-            <h1>GravySyncro</h1>
+            <div className="auth-brand">
+              <img src="/gravysyncro.jpg" alt="GravySyncro" className="auth-logo" />
+              <h1>GravySyncro</h1>
+            </div>
             <LanguageSelector />
           </div>
-          <p>{t('auth.loginTitle')}</p>
+          <p className="auth-tagline">Collaborative document management</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="auth-form">
-          <h2>{t('auth.signIn')}</h2>
+        {/* ── Form ── */}
+        <form onSubmit={handleSubmit} className="auth-form" noValidate>
+          <h2>{twoFactorRequired ? 'Two-Factor Authentication' : t('auth.signIn')}</h2>
+          <p className="form-subtitle">
+            {twoFactorRequired
+              ? 'Enter the 6-digit code from your authenticator app.'
+              : t('auth.loginTitle')}
+          </p>
 
-          {error && <div className="error-message">{error}</div>}
+          {/* Error banner */}
+          {error && (
+            <div className="alert alert-error" role="alert">
+              <AlertCircle size={16} />
+              <span>{error}</span>
+              <button
+                type="button"
+                className="alert-dismiss"
+                onClick={() => dispatch(clearError())}
+                aria-label="Dismiss"
+              >×</button>
+            </div>
+          )}
 
-          <div className="form-group">
-            <label htmlFor="email">{t('auth.email')}</label>
-            <input
-              type="email"
-              id="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              placeholder="your@email.com"
-              disabled={twoFactorRequired}
-            />
-          </div>
+          {!twoFactorRequired && (
+            <>
+              {/* Email */}
+              <div className="form-group">
+                <label htmlFor="email">{t('auth.email')}</label>
+                <div className="input-wrapper">
+                  <Mail size={16} className="input-icon" />
+                  <input
+                    type="email"
+                    id="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    placeholder="your@email.com"
+                    autoComplete="email"
+                    disabled={isLoading}
+                  />
+                </div>
+              </div>
 
-          <div className="form-group">
-            <label htmlFor="password">{t('auth.password')}</label>
-            <input
-              type="password"
-              id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              placeholder="••••••••"
-              disabled={twoFactorRequired}
-            />
-          </div>
+              {/* Password */}
+              <div className="form-group">
+                <div className="label-row">
+                  <label htmlFor="password">{t('auth.password')}</label>
+                  <Link to="/forgot-password" className="label-link" tabIndex={-1}>
+                    {t('auth.forgotPassword')}
+                  </Link>
+                </div>
+                <div className="input-wrapper">
+                  <Lock size={16} className="input-icon" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    id="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    placeholder="••••••••"
+                    autoComplete="current-password"
+                    disabled={isLoading}
+                  />
+                  <button
+                    type="button"
+                    className="input-action"
+                    onClick={() => setShowPassword(v => !v)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
 
+          {/* 2FA code */}
           {twoFactorRequired && (
             <div className="form-group">
-              <label htmlFor="twoFactorCode">Two-Factor Authentication Code</label>
-              <input
-                type="text"
-                id="twoFactorCode"
-                value={twoFactorCode}
-                onChange={(e) => setTwoFactorCode(e.target.value)}
-                required
-                placeholder="Enter 6-digit code"
-                maxLength="6"
-              />
+              <label htmlFor="twoFactorCode">Authenticator Code</label>
+              <div className="input-wrapper">
+                <ShieldCheck size={16} className="input-icon" />
+                <input
+                  type="text"
+                  id="twoFactorCode"
+                  value={twoFactorCode}
+                  onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  required
+                  placeholder="123456"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  autoFocus
+                />
+              </div>
+              <small>Can't access your authenticator? <Link to="/forgot-password" className="link-inline">Reset via email</Link></small>
             </div>
           )}
 
           <button type="submit" className="btn-primary" disabled={isLoading}>
-            {isLoading ? t('auth.signingIn') : t('auth.signIn')}
+            {isLoading
+              ? <><Loader2 size={16} className="spin" /> {t('auth.signingIn')}</>
+              : twoFactorRequired ? 'Verify Code' : t('auth.signIn')
+            }
           </button>
 
           <div className="auth-links">
-            <a href="/forgot-password">{t('auth.forgotPassword')}</a>
-            <span>•</span>
-            <a href="/register">{t('auth.createAccount')}</a>
+            <span>Don't have an account?</span>
+            <Link to="/register">{t('auth.createAccount')}</Link>
           </div>
         </form>
       </div>

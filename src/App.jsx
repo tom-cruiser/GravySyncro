@@ -11,6 +11,7 @@ import Dashboard from './pages/Dashboard';
 import Documents from './pages/Documents';
 import Profile from './pages/Profile';
 import Support from './pages/Support';
+import Billing from './pages/Billing';
 import AdminDashboard from './pages/AdminDashboard';
 import { logout, setAuthUser } from './features/auth/authSlice';
 import ToastContainer from './components/ToastContainer';
@@ -73,6 +74,7 @@ function App() {
           <Route path="documents" element={<Documents />} />
           <Route path="profile" element={<Profile />} />
           <Route path="support" element={<Support />} />
+          <Route path="billing" element={<Billing />} />
           <Route path="admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
         </Route>
         

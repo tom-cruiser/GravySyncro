@@ -26,3 +26,5 @@ yarn-error.log*
 .idea/
 *.swp
 *.swo
+.env
+.env.production

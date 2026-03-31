@@ -4,8 +4,9 @@ import { useTranslation } from 'react-i18next';
 import { User, Mail, Briefcase, Lock, Save, Shield, CheckCircle, XCircle, Copy } from 'lucide-react';
 import { updateProfile } from '../features/auth/authSlice';
 import axios from 'axios';
-import api from '../config/api';
 import './Profile.css';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
 
 const Profile = () => {
   const { t } = useTranslation();
@@ -68,7 +69,7 @@ const Profile = () => {
     
     try {
       const response = await axios.patch(
-        api.endpoints.users.profile(),
+        `${API_URL}/users/profile`,
         {
           firstName: formData.firstName,
           lastName: formData.lastName,
@@ -117,7 +118,7 @@ const Profile = () => {
 
     try {
       await axios.patch(
-        api.endpoints.auth.changePassword ? api.endpoints.auth.changePassword() : `${api.API_URL}/v1/auth/change-password`,
+        `${API_URL}/auth/change-password`,
         {
           currentPassword: formData.currentPassword,
           newPassword: formData.newPassword,
