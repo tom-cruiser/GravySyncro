@@ -1,0 +1,47 @@
+name: Deploy GravySyncro Frontend
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    name: Build & Deploy to Production
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build
+        run: npm run build
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_APP_NAME: GravySyncro
+
+      - name: Deploy build to server via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT }}
+          script: /opt/deploy-scripts/deploy-gravysyncro-frontend.sh
+
+      - name: Notify success
+        if: success()
+        run: echo "✅ GravySyncro frontend deployed successfully!"
+
+      - name: Notify failure
+        if: failure()
+        run: echo "❌ GravySyncro frontend deployment failed!"
