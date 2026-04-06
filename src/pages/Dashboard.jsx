@@ -41,7 +41,7 @@ const Dashboard = () => {
   const fetchDashboardData = async () => {
     try {
       setLoadingStats(true);
-      const [statsResult, workspaceResult] = await Promise.allSettled([
+      const [statsResult, workspaceResult, profileResult] = await Promise.allSettled([
         axios.get(
           `${import.meta.env.VITE_API_URL}/documents/dashboard-stats`,
           {
@@ -49,6 +49,9 @@ const Dashboard = () => {
           }
         ),
         axios.get(api.endpoints.workspaces.list(), {
+          headers: { Authorization: `Bearer ${token}` }
+        }),
+        axios.get(api.endpoints.users.profile(), {
           headers: { Authorization: `Bearer ${token}` }
         }),
       ]);
@@ -59,6 +62,9 @@ const Dashboard = () => {
 
       const response = statsResult.value;
       const workspaceResponse = workspaceResult.status === 'fulfilled' ? workspaceResult.value : null;
+      const profileData = (profileResult && profileResult.status === 'fulfilled')
+        ? profileResult.value?.data?.data?.user
+        : null;
       
       const {
         totalDocuments,
@@ -72,13 +78,45 @@ const Dashboard = () => {
       setWorkspaceLabel('Workspaces');
       
       setStats({ totalDocuments, thisMonth, recent, workspaceCount });
+
+      const dashboardStorageUsed = Number(nextSpaceUsage.storageUsed || 0);
+      const dashboardStorageLimit = Number(nextSpaceUsage.storageLimit || 0);
+      const profileStorageUsed = Number(profileData?.storageUsed || 0);
+      const profileStorageLimit = Number(profileData?.storageLimit || 0);
+
+      const effectiveStorageUsed = dashboardStorageUsed > 0 || dashboardStorageLimit > 0
+        ? dashboardStorageUsed
+        : profileStorageUsed;
+      const effectiveStorageLimit = dashboardStorageLimit > 0
+        ? dashboardStorageLimit
+        : profileStorageLimit;
+
+      const effectiveStorageRemaining = Math.max(effectiveStorageLimit - effectiveStorageUsed, 0);
+      const effectiveStoragePercent = effectiveStorageLimit > 0
+        ? Number(((effectiveStorageUsed / effectiveStorageLimit) * 100).toFixed(2))
+        : 0;
+
       setSpaceUsage({
-        storageUsed: Number(nextSpaceUsage.storageUsed || 0),
-        storageLimit: Number(nextSpaceUsage.storageLimit || 0),
-        storageRemaining: Number(nextSpaceUsage.storageRemaining || 0),
-        storageUsedPercentage: Number(nextSpaceUsage.storageUsedPercentage || 0),
+        storageUsed: effectiveStorageUsed,
+        storageLimit: effectiveStorageLimit,
+        storageRemaining: effectiveStorageRemaining,
+        storageUsedPercentage: effectiveStoragePercent,
       });
-      setSpaceUsers(Array.isArray(nextSpaceUsers) ? nextSpaceUsers : []);
+
+      const normalizedDashboardUsers = Array.isArray(nextSpaceUsers) ? nextSpaceUsers : [];
+      const fallbackUsers = profileData
+        ? [{
+            _id: profileData._id,
+            firstName: profileData.firstName,
+            lastName: profileData.lastName,
+            email: profileData.email,
+            role: profileData.role,
+            storageUsed: effectiveStorageUsed,
+            usagePercentOfTenant: effectiveStoragePercent,
+          }]
+        : [];
+
+      setSpaceUsers(normalizedDashboardUsers.length ? normalizedDashboardUsers : fallbackUsers);
       
       // Format documents for display
       const formattedDocs = docs.map((doc) => {
