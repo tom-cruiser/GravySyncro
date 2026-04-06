@@ -64,8 +64,9 @@ const AdminTenants = () => {
     });
   };
 
-  const calculateStoragePercentage = (used) => {
-    const maxStorage = 5 * 1024 * 1024 * 1024; // 5GB in bytes
+  const calculateStoragePercentage = (used, limit) => {
+    const maxStorage = Number(limit || 0);
+    if (!maxStorage) return '0.0';
     return ((used / maxStorage) * 100).toFixed(1);
   };
 
@@ -147,19 +148,19 @@ const AdminTenants = () => {
 
             <div className="tenant-storage">
               <div className="storage-header">
-                <span>Storage Used</span>
+                <span>Enterprise Storage</span>
                 <span className="storage-percentage">
-                  {calculateStoragePercentage(tenant.storageUsed)}%
+                  {calculateStoragePercentage(tenant.storageUsed, tenant.storageLimit)}%
                 </span>
               </div>
               <div className="storage-bar">
                 <div
                   className="storage-progress"
-                  style={{ width: `${calculateStoragePercentage(tenant.storageUsed)}%` }}
+                  style={{ width: `${calculateStoragePercentage(tenant.storageUsed, tenant.storageLimit)}%` }}
                 />
               </div>
               <div className="storage-info">
-                {formatBytes(tenant.storageUsed)} / 5 GB
+                {formatBytes(tenant.storageUsed)} / {formatBytes(tenant.storageLimit)}
               </div>
             </div>
 

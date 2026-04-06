@@ -216,47 +216,105 @@
   },
   "landing": {
     "nav": {
+      "features": "Fonctionnalites",
       "contact": "Contact",
       "getStarted": "Commencer"
     },
     "hero": {
-      "eyebrow": "Des operations documentaires securisees pour les equipes modernes",
-      "title": "Bienvenue sur GravySyncro",
-      "description": "GravySyncro aide les organisations a archiver, organiser, partager et superviser leurs documents critiques dans un espace securise unique. Du televersement a la collaboration, jusqu'au pilotage admin, chaque action est synchronisee en temps reel.",
-      "primaryCta": "Commencer",
-      "secondaryCta": "Nous contacter",
+      "eyebrow": "Operations documentaires de niveau entreprise",
+      "title": "Pilotez vos documents en toute confiance",
+      "description": "GravySyncro unifie archivage securise, collaboration structuree et gouvernance administrative dans un espace controle. Chaque action sur les documents est tracable, geree par roles et synchronisee en temps reel.",
+      "primaryCta": "Demarrer en securite",
+      "secondaryCta": "Parler a notre equipe",
       "points": {
-        "one": "Controle d'acces multi-tenant",
-        "two": "Televersement rapide, recherche et organisation structuree",
-        "three": "Alertes, journaux d'activite et gouvernance du stockage"
+        "one": "Controle multi-tenant avec acces par roles",
+        "two": "Televersement rapide, recherche fiable et organisation structuree",
+        "three": "Alertes en temps reel, pistes d'audit et gouvernance du stockage"
       }
     },
     "panel": {
-      "title": "Pourquoi les equipes choisissent GravySyncro",
+      "title": "Pourquoi les equipes de reference choisissent GravySyncro",
       "items": {
         "security": "Architecture orientee securite",
-        "collaboration": "Versioning et outils de collaboration",
-        "notifications": "Notifications intelligentes et insights admin"
+        "collaboration": "Collaboration controlee et gestion des versions",
+        "notifications": "Insights operationnels et notifications intelligentes"
       }
     },
     "explain": {
       "app": {
-        "title": "Ce que fait l'application",
-        "description": "GravySyncro est une plateforme SaaS pour l'archivage securise et les workflows collaboratifs. Les utilisateurs peuvent televerser des fichiers, naviguer par structure, partager des documents et conserver l'historique des versions avec des permissions controlees."
+        "title": "Vue d'ensemble de la plateforme",
+        "description": "GravySyncro est une plateforme SaaS securisee de gestion du cycle de vie documentaire. Les equipes peuvent importer, classer, partager et gouverner les dossiers critiques avec historique complet et permissions conformes aux politiques internes."
       },
       "admins": {
-        "title": "Concue pour les admins",
-        "description": "Les administrateurs peuvent superviser les utilisateurs, suivre l'activite, gerer les notifications et attribuer des plans de stockage. Cela garantit un pilotage clair de l'usage et l'alignement avec les politiques internes."
+        "title": "Concue pour les administrateurs",
+        "description": "Les administrateurs supervisent les acces utilisateurs, l'activite operationnelle et l'allocation du stockage depuis une couche de controle unique, garantissant conformite, visibilite et gouvernance a grande echelle."
       },
       "users": {
-        "title": "Concue pour les utilisateurs",
-        "description": "Les utilisateurs beneficient d'une interface claire pour stocker et retrouver rapidement leurs documents, avec la recherche, la previsualisation, le partage et la personnalisation du profil."
+        "title": "Concue pour les utilisateurs metier",
+        "description": "Les utilisateurs profitent d'un espace cible pour televerser rapidement, rechercher avec precision, partager en securite et personnaliser leur profil sans complexite operationnelle."
+      }
+    },
+    "features": {
+      "eyebrow": "Dernieres capacites",
+      "title": "Une couche operationnelle unifiee pour vos equipes documentaires",
+      "description": "GravySyncro combine desormais collaboration, administration et controles de compte dans un environnement unique et fiable pour les operations d'entreprise.",
+      "cards": {
+        "messaging": {
+          "title": "Messagerie Support",
+          "description": "Soumettez des demandes de support, suivez leur cycle de traitement et recevez les reponses administrateur directement dans la plateforme."
+        },
+        "versioning": {
+          "title": "Historique des Versions",
+          "description": "Conservez une chronologie complete des modifications, consultez les versions precedentes et assurez une responsabilite totale des editions."
+        },
+        "admin": {
+          "title": "Centre de Controle Admin",
+          "description": "Supervisez utilisateurs, tenants, notifications et journaux d'activite depuis un tableau de bord operationnel consolide."
+        },
+        "profile": {
+          "title": "Profil et Securite",
+          "description": "Gerez vos informations d'identite, votre contexte organisationnel et la securite des identifiants depuis un espace profil dedie."
+        },
+        "billing": {
+          "title": "Facturation et Plans",
+          "description": "Controlez abonnements, niveaux de stockage et visibilite de facturation pour une croissance maitrisee."
+        },
+        "workspace": {
+          "title": "Espaces de Travail Structures",
+          "description": "Organisez equipes et fichiers avec des grilles consultables, un regroupement structure et une navigation plus rapide par contexte."
+        }
+      }
+    },
+    "workflow": {
+      "eyebrow": "Flux operationnel",
+      "title": "Concu pour une execution quotidienne fiable",
+      "description": "Un parcours clair maintient la productivite des equipes tout en preservant controle, tracabilite et securite a chaque etape.",
+      "steps": {
+        "one": "Provisionnez des workspaces multi-tenant, integrez les membres et appliquez les acces par roles des le premier jour.",
+        "two": "Televersez, partagez et collaborez sur les documents avec commentaires, suivi des versions et notifications en temps reel.",
+        "three": "Exploitez insights administratifs, journaux d'audit et controles de facturation pour maintenir la gouvernance avec la croissance."
+      }
+    },
+    "stats": {
+      "items": {
+        "one": {
+          "value": "24/7",
+          "label": "Visibilite systeme"
+        },
+        "two": {
+          "value": "Par roles",
+          "label": "Controles d'acces"
+        },
+        "three": {
+          "value": "Temps reel",
+          "label": "Alertes et mises a jour"
+        }
       }
     },
     "contact": {
       "eyebrow": "Contact",
-      "title": "Pret a embarquer votre equipe ?",
-      "description": "Contactez-nous et nous vous aiderons a configurer GravySyncro selon votre workflow.",
+      "title": "Pret a deployer GravySyncro a l'echelle de votre equipe ?",
+      "description": "Contactez-nous pour planifier votre deploiement, aligner les exigences de securite et lancer en toute confiance.",
       "cards": {
         "email": {
           "title": "Email"

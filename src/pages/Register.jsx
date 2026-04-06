@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, Link } from 'react-router-dom';
-import { Eye, EyeOff, Mail, Lock, User, Briefcase, Hash, AlertCircle, Loader2 } from 'lucide-react';
+import { Mail, Lock, User, Briefcase, Hash, AlertCircle, Loader2 } from 'lucide-react';
 import { registerStart, registerSuccess, registerFailure, clearError } from '../features/auth/authSlice';
 import api from '../config/api';
+import LanguageSelector from '../components/LanguageSelector';
 import './Auth.css';
 
 const PASSWORD_RE = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
@@ -21,12 +22,18 @@ const Register = () => {
   const [showPassword, setShowPassword]        = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [clientError, setClientError]          = useState('');
+  const [capsLockPassword, setCapsLockPassword] = useState(false);
+  const [capsLockConfirmPassword, setCapsLockConfirmPassword] = useState(false);
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { isLoading, error } = useSelector(state => state.auth);
 
   const roles = ['Student', 'Notary', 'Teacher', 'Lawyer', 'Professional'];
+
+  const trackCapsLock = (setter) => (e) => {
+    setter(e.getModifierState && e.getModifierState('CapsLock'));
+  };
 
   const handleChange = (e) => {
     setClientError('');
@@ -99,6 +106,14 @@ const Register = () => {
     return 'fair';
   };
   const strength = passwordStrength();
+  const registerReady =
+    formData.firstName.trim().length > 0
+    && formData.lastName.trim().length > 0
+    && formData.email.trim().length > 5
+    && formData.password.length > 0
+    && formData.confirmPassword.length > 0
+    && formData.password === formData.confirmPassword
+    && PASSWORD_RE.test(formData.password);
 
   return (
     <div className="auth-container">
@@ -106,9 +121,12 @@ const Register = () => {
 
         {/* ── Header ── */}
         <div className="auth-header">
-          <div className="auth-brand auth-brand-center">
-            <img src="/gravysyncro.jpg" alt="GravySyncro" className="auth-logo" />
-            <h1>GravySyncro</h1>
+          <div className="auth-header-top auth-header-center-stack">
+            <div className="auth-brand auth-brand-center">
+              <img src="/gravysyncrologo.png" alt="GravySyncro" className="auth-logo" />
+              <h1>GravySyncro</h1>
+            </div>
+            <LanguageSelector />
           </div>
           <p className="auth-tagline">Create your free account</p>
         </div>
@@ -228,7 +246,7 @@ const Register = () => {
           {/* Password */}
           <div className="form-group">
             <label htmlFor="password">Password</label>
-            <div className="input-wrapper">
+            <div className="input-wrapper has-action">
               <Lock size={16} className="input-icon" />
               <input
                 type={showPassword ? 'text' : 'password'}
@@ -236,6 +254,9 @@ const Register = () => {
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
+                onKeyUp={trackCapsLock(setCapsLockPassword)}
+                onKeyDown={trackCapsLock(setCapsLockPassword)}
+                onBlur={() => setCapsLockPassword(false)}
                 required
                 placeholder="••••••••"
                 autoComplete="new-password"
@@ -247,9 +268,12 @@ const Register = () => {
                 onClick={() => setShowPassword(v => !v)}
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                {showPassword ? 'Hide' : 'Show'}
               </button>
             </div>
+            {capsLockPassword && (
+              <small className="text-warning">Caps Lock is on.</small>
+            )}
             {/* Strength indicator */}
             {strength && (
               <div className="password-strength">
@@ -265,7 +289,7 @@ const Register = () => {
           {/* Confirm password */}
           <div className="form-group">
             <label htmlFor="confirmPassword">Confirm Password</label>
-            <div className="input-wrapper">
+            <div className="input-wrapper has-action">
               <Lock size={16} className="input-icon" />
               <input
                 type={showConfirmPassword ? 'text' : 'password'}
@@ -273,6 +297,9 @@ const Register = () => {
                 name="confirmPassword"
                 value={formData.confirmPassword}
                 onChange={handleChange}
+                onKeyUp={trackCapsLock(setCapsLockConfirmPassword)}
+                onKeyDown={trackCapsLock(setCapsLockConfirmPassword)}
+                onBlur={() => setCapsLockConfirmPassword(false)}
                 required
                 placeholder="••••••••"
                 autoComplete="new-password"
@@ -284,9 +311,12 @@ const Register = () => {
                 onClick={() => setShowConfirmPassword(v => !v)}
                 aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
               >
-                {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                {showConfirmPassword ? 'Hide' : 'Show'}
               </button>
             </div>
+            {capsLockConfirmPassword && (
+              <small className="text-warning">Caps Lock is on.</small>
+            )}
             {/* Match indicator */}
             {formData.confirmPassword && (
               <small className={formData.password === formData.confirmPassword ? 'text-success' : 'text-error'}>
@@ -295,7 +325,7 @@ const Register = () => {
             )}
           </div>
 
-          <button type="submit" className="btn-primary" disabled={isLoading}>
+          <button type="submit" className="btn-primary" disabled={isLoading || !registerReady}>
             {isLoading
               ? <><Loader2 size={16} className="spin" /> Creating Account…</>
               : 'Create Account'

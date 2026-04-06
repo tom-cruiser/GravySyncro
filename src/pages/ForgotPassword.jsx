@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import api from '../config/api';
 import './Auth.css';
 
 const ForgotPassword = () => {
@@ -13,8 +14,7 @@ const ForgotPassword = () => {
     setError('');
 
     try {
-      // Mock API call - replace with actual API endpoint
-      const response = await fetch('${API_BASE_URL}/v1/auth/forgot-password', {
+      const response = await fetch(api.endpoints.auth.forgotPassword(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
@@ -22,7 +22,7 @@ const ForgotPassword = () => {
 
       const data = await response.json();
 
-      if (data.success) {
+      if (response.ok && data?.status === 'success') {
         setIsSubmitted(true);
       } else {
         setError(data.message || 'Failed to send reset email');

@@ -75,6 +75,7 @@ const authSlice = createSlice({
       localStorage.removeItem('token');
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
+      localStorage.removeItem('currentWorkspace');
     },
     setAuthUser: (state, action) => {
       state.user = action.payload;

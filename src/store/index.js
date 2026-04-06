@@ -4,6 +4,7 @@ import documentsReducer from '../features/documents/documentsSlice';
 import notificationsReducer from '../features/notifications/notificationsSlice';
 import sharingReducer from '../features/sharing/sharingSlice';
 import collaborationReducer from '../features/collaboration/collaborationSlice';
+import workspaceReducer from '../features/workspace/workspaceSlice';
 
 export const store = configureStore({
   reducer: {
@@ -12,6 +13,7 @@ export const store = configureStore({
     notifications: notificationsReducer,
     sharing: sharingReducer,
     collaboration: collaborationReducer,
+    workspace: workspaceReducer,
   },
 });
 

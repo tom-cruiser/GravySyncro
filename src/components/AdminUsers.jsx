@@ -29,6 +29,7 @@ const AdminUsers = () => {
   const [selectedUserIds, setSelectedUserIds] = useState([]);
   const [bulkStoragePlanGb, setBulkStoragePlanGb] = useState(50);
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [actionType, setActionType] = useState('');
@@ -36,6 +37,7 @@ const AdminUsers = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [storagePlanGb, setStoragePlanGb] = useState(50);
+  const [tenantStorageEndpointAvailable, setTenantStorageEndpointAvailable] = useState(true);
 
   useEffect(() => {
     fetchUsers();
@@ -59,6 +61,7 @@ const AdminUsers = () => {
       setSelectedUserIds((current) => current.filter((id) => loadedUsers.some((user) => user._id === id)));
     } catch (error) {
       console.error('Error fetching users:', error);
+      setUsers([]);
     } finally {
       setLoading(false);
     }
@@ -93,7 +96,15 @@ const AdminUsers = () => {
     activate: 'Activate',
     delete: 'Delete',
     resetPassword: 'Reset Password',
-    setStorage: 'Set Storage Plan'
+    setStorage: 'Set Enterprise Plan'
+  };
+
+  const actionPrompts = {
+    deactivate: 'deactivate',
+    activate: 'activate',
+    delete: 'delete',
+    resetPassword: 'reset password for',
+    setStorage: 'set the enterprise plan for',
   };
 
   const selectableUsers = users.filter((user) => user.role !== 'Admin');
@@ -118,15 +129,48 @@ const AdminUsers = () => {
     setSelectedUserIds(selectableUsers.map((user) => user._id));
   };
 
-  const handleBulkStorageUpdate = async () => {
-    if (!selectedUserIds.length) {
-      alert('Select at least one user first.');
+  const updateEnterpriseStorage = async ({ tenantId, userId, storageGb }) => {
+    if (!tenantStorageEndpointAvailable) {
+      await axios.patch(
+        `${api.endpoints.admin.users()}/${userId}/storage-limit`,
+        { storagePlanGb: Number(storageGb) },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
       return;
     }
 
-    const selectedCount = selectedUserIds.length;
+    try {
+      await axios.patch(
+        api.endpoints.admin.tenantStorageLimit(tenantId),
+        { storagePlanGb: Number(storageGb) },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+    } catch (error) {
+      if (error?.response?.status !== 404) {
+        throw error;
+      }
+
+      setTenantStorageEndpointAvailable(false);
+
+      await axios.patch(
+        `${api.endpoints.admin.users()}/${userId}/storage-limit`,
+        { storagePlanGb: Number(storageGb) },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+    }
+  };
+
+  const handleBulkStorageUpdate = async () => {
+    if (!selectedUserIds.length) {
+      alert('Select at least one member first.');
+      return;
+    }
+
+    const selectedUsers = users.filter((user) => selectedUserIds.includes(user._id));
+    const uniqueTenants = [...new Map(selectedUsers.map((user) => [user.tenantId, user])).values()];
+    const selectedEnterpriseCount = uniqueTenants.length;
     const confirmed = window.confirm(
-      `Assign ${bulkStoragePlanGb} GB plan to ${selectedCount} selected user${selectedCount > 1 ? 's' : ''}?`
+      `Assign ${bulkStoragePlanGb} GB enterprise plan to ${selectedEnterpriseCount} selected enterprise${selectedEnterpriseCount > 1 ? 's' : ''}?`
     );
 
     if (!confirmed) return;
@@ -134,16 +178,16 @@ const AdminUsers = () => {
     try {
       setIsBulkUpdating(true);
       await Promise.all(
-        selectedUserIds.map((userId) =>
-          axios.patch(
-            `${api.endpoints.admin.users()}/${userId}/storage-limit`,
-            { storagePlanGb: Number(bulkStoragePlanGb) },
-            { headers: { Authorization: `Bearer ${token}` } }
-          )
+        uniqueTenants.map((tenantUser) =>
+          updateEnterpriseStorage({
+            tenantId: tenantUser.tenantId,
+            userId: tenantUser._id,
+            storageGb: bulkStoragePlanGb,
+          })
         )
       );
 
-      alert(`Storage plan updated to ${bulkStoragePlanGb} GB for ${selectedCount} users.`);
+      alert(`Enterprise storage plan updated to ${bulkStoragePlanGb} GB for ${selectedEnterpriseCount} enterprise${selectedEnterpriseCount > 1 ? 's' : ''}.`);
       setSelectedUserIds([]);
       fetchUsers();
     } catch (error) {
@@ -152,6 +196,44 @@ const AdminUsers = () => {
       alert(message);
     } finally {
       setIsBulkUpdating(false);
+    }
+  };
+
+  const handleBulkDeleteUsers = async () => {
+    if (!selectedUserIds.length) {
+      alert('Select at least one member first.');
+      return;
+    }
+
+    const selectedCount = selectedUserIds.length;
+    const confirmed = window.confirm(
+      `Delete ${selectedCount} selected member${selectedCount > 1 ? 's' : ''}? This cannot be undone.`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setIsBulkDeleting(true);
+      const results = await Promise.allSettled(
+        selectedUserIds.map((userId) =>
+          axios.delete(`${api.endpoints.admin.users()}/${userId}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          })
+        )
+      );
+
+      const deletedCount = results.filter((result) => result.status === 'fulfilled').length;
+      const failedCount = results.length - deletedCount;
+
+      alert(`Deleted ${deletedCount} member${deletedCount === 1 ? '' : 's'}${failedCount ? `, ${failedCount} failed.` : '.'}`);
+      setSelectedUserIds([]);
+      fetchUsers();
+    } catch (error) {
+      console.error('Bulk delete error:', error);
+      const message = error?.response?.data?.message || 'Bulk delete failed.';
+      alert(message);
+    } finally {
+      setIsBulkDeleting(false);
     }
   };
 
@@ -184,7 +266,7 @@ const AdminUsers = () => {
       if (actionType === 'setStorage') {
         payload = { storagePlanGb: Number(storagePlanGb) };
       }
-      
+
       switch (actionType) {
         case 'deactivate':
           url = `${api.endpoints.admin.users()}/${selectedUser._id}/deactivate`;
@@ -200,18 +282,31 @@ const AdminUsers = () => {
           url = `${api.endpoints.admin.users()}/${selectedUser._id}/password`;
           break;
         case 'setStorage':
-          url = `${api.endpoints.admin.users()}/${selectedUser._id}/storage-limit`;
-          break;
+          await updateEnterpriseStorage({
+            tenantId: selectedUser.tenantId,
+            userId: selectedUser._id,
+            storageGb: storagePlanGb,
+          });
+          setShowModal(false);
+          setSelectedUser(null);
+          fetchUsers();
+          alert(`${actionLabels[actionType]} completed successfully!`);
+          return;
         default:
           return;
       }
 
-      await axios({
+      const requestConfig = {
         method,
         url,
-        data: payload,
         headers: { Authorization: `Bearer ${token}` }
-      });
+      };
+
+      if (method !== 'delete') {
+        requestConfig.data = payload;
+      }
+
+      await axios(requestConfig);
 
       setShowModal(false);
       setSelectedUser(null);
@@ -228,8 +323,8 @@ const AdminUsers = () => {
     <div className="admin-users">
       <div className="users-header">
         <div>
-          <h2><Users size={24} /> User Management</h2>
-          <p>Manage all users across all tenants</p>
+          <h2><Users size={24} /> Enterprise Access Control</h2>
+          <p>Manage enterprise members and shared storage plans across all tenants</p>
         </div>
       </div>
 
@@ -238,14 +333,14 @@ const AdminUsers = () => {
           <Search size={18} />
           <input
             type="text"
-            placeholder="Search users by name or email..."
+            placeholder="Search members by name or email..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
 
-        <select 
-          value={roleFilter} 
+        <select
+          value={roleFilter}
           onChange={(e) => setRoleFilter(e.target.value)}
           className="filter-select"
         >
@@ -258,8 +353,8 @@ const AdminUsers = () => {
           <option value="Admin">Admin</option>
         </select>
 
-        <select 
-          value={statusFilter} 
+        <select
+          value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
           className="filter-select"
         >
@@ -273,7 +368,7 @@ const AdminUsers = () => {
           onChange={(e) => setStoragePlanFilter(e.target.value)}
           className="filter-select"
         >
-          <option value="">All Storage Plans</option>
+          <option value="">All Enterprise Plans</option>
           <option value="50">50 GB</option>
           <option value="100">100 GB</option>
           <option value="200">200 GB</option>
@@ -293,7 +388,7 @@ const AdminUsers = () => {
           </button>
         </div>
         <div className="bulk-right">
-          <label>Assign Plan</label>
+          <label>Assign Enterprise Plan</label>
           <select
             value={bulkStoragePlanGb}
             onChange={(e) => setBulkStoragePlanGb(Number(e.target.value))}
@@ -308,7 +403,15 @@ const AdminUsers = () => {
             onClick={handleBulkStorageUpdate}
             disabled={!selectedUserIds.length || isBulkUpdating}
           >
-            {isBulkUpdating ? 'Applying...' : 'Apply to Selected'}
+            {isBulkUpdating ? 'Applying...' : 'Apply to Selected Enterprises'}
+          </button>
+          <button
+            type="button"
+            className="btn-danger-outline"
+            onClick={handleBulkDeleteUsers}
+            disabled={!selectedUserIds.length || isBulkDeleting}
+          >
+            {isBulkDeleting ? 'Deleting...' : 'Delete Selected'}
           </button>
         </div>
       </div>
@@ -325,15 +428,15 @@ const AdminUsers = () => {
                     type="checkbox"
                     checked={allSelectableSelected}
                     onChange={toggleSelectAll}
-                    aria-label="Select all users"
+                    aria-label="Select all members"
                   />
                 </th>
-                <th>User</th>
+                <th>Member</th>
                 <th>Email</th>
                 <th>Role</th>
                 <th>Tenant ID</th>
                 <th>Status</th>
-                <th>Storage</th>
+                <th>Enterprise Storage</th>
                 <th>Joined</th>
                 <th>Actions</th>
               </tr>
@@ -347,7 +450,7 @@ const AdminUsers = () => {
                         type="checkbox"
                         checked={selectedUserIds.includes(user._id)}
                         onChange={() => toggleSelectUser(user._id)}
-                        aria-label={`Select ${user.firstName} ${user.lastName}`}
+                        aria-label={`Select member ${user.firstName} ${user.lastName}`}
                       />
                     ) : null}
                   </td>
@@ -412,7 +515,7 @@ const AdminUsers = () => {
                             <button
                               className="btn-icon btn-danger"
                               onClick={() => handleAction(user, 'deactivate')}
-                              title="Deactivate User"
+                              title="Deactivate Member"
                             >
                               <UserX size={16} />
                             </button>
@@ -420,7 +523,7 @@ const AdminUsers = () => {
                             <button
                               className="btn-icon btn-success"
                               onClick={() => handleAction(user, 'activate')}
-                              title="Activate User"
+                              title="Activate Member"
                             >
                               <UserCheck size={16} />
                             </button>
@@ -435,16 +538,17 @@ const AdminUsers = () => {
                           <button
                             className="btn-icon btn-info"
                             onClick={() => handleAction(user, 'setStorage')}
-                            title="Set Storage Plan"
+                            title="Set Enterprise Plan"
                           >
                             <HardDrive size={16} />
                           </button>
                           <button
-                            className="btn-icon btn-danger"
+                            className="btn-icon btn-danger btn-icon-label"
                             onClick={() => handleAction(user, 'delete')}
-                            title="Delete User"
+                            title="Delete Member"
                           >
                             <Trash2 size={16} />
+                            <span>Delete Member</span>
                           </button>
                         </>
                       )}
@@ -458,7 +562,7 @@ const AdminUsers = () => {
           {users.length === 0 && (
             <div className="no-results">
               <AlertCircle size={48} />
-              <p>No users found matching your criteria</p>
+              <p>No members found matching your criteria</p>
             </div>
           )}
         </div>
@@ -471,7 +575,7 @@ const AdminUsers = () => {
               Confirm {actionLabels[actionType]}
             </h3>
             <p>
-              Are you sure you want to {actionType === 'resetPassword' ? 'reset password for' : actionType} user{' '}
+              Are you sure you want to {actionPrompts[actionType] || actionType} member{' '}
               <strong>{selectedUser?.firstName} {selectedUser?.lastName}</strong>?
             </p>
 
@@ -497,7 +601,7 @@ const AdminUsers = () => {
                 </div>
                 <div className="warning-box">
                   <AlertCircle size={20} />
-                  <p>User will need to log in again with the new password.</p>
+                  <p>This member will need to log in again with the new password.</p>
                 </div>
               </>
             )}
@@ -516,7 +620,7 @@ const AdminUsers = () => {
 
             {actionType === 'setStorage' && (
               <div className="form-group">
-                <label>Storage Plan</label>
+                <label>Enterprise Storage Plan</label>
                 <select
                   value={storagePlanGb}
                   onChange={(e) => setStoragePlanGb(Number(e.target.value))}
@@ -526,7 +630,7 @@ const AdminUsers = () => {
                   <option value={200}>200 GB</option>
                 </select>
                 <small className="storage-help">
-                  Current usage: {formatBytes(selectedUser?.storageUsed || 0)}
+                  Current enterprise usage: {formatBytes(selectedUser?.storageUsed || 0)} / {formatBytes(selectedUser?.storageLimit || 0)}
                 </small>
               </div>
             )}
@@ -534,18 +638,18 @@ const AdminUsers = () => {
             {actionType === 'delete' && (
               <div className="warning-box">
                 <AlertCircle size={20} />
-                <p>This action cannot be undone. All user data will be permanently deleted.</p>
+                <p>This action cannot be undone. All member data will be permanently deleted.</p>
               </div>
             )}
 
             <div className="modal-actions">
-              <button 
-                className="btn-secondary" 
+              <button
+                className="btn-secondary"
                 onClick={() => setShowModal(false)}
               >
                 Cancel
               </button>
-              <button 
+              <button
                 className={`btn-primary ${actionType === 'delete' ? 'btn-danger' : ''}`}
                 onClick={confirmAction}
               >

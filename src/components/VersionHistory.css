@@ -23,6 +23,12 @@
   gap: 16px;
 }
 
+.version-empty {
+  text-align: center;
+  color: var(--gray-500);
+  padding: 1rem;
+}
+
 .version-item {
   display: flex;
   align-items: start;

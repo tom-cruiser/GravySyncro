@@ -13,6 +13,7 @@ import Profile from './pages/Profile';
 import Support from './pages/Support';
 import Billing from './pages/Billing';
 import AdminDashboard from './pages/AdminDashboard';
+import Workspaces from './pages/Workspaces';
 import { logout, setAuthUser } from './features/auth/authSlice';
 import ToastContainer from './components/ToastContainer';
 import './App.css';
@@ -25,7 +26,7 @@ const PrivateRoute = ({ children }) => {
 const AdminRoute = ({ children }) => {
   const { isAuthenticated, user } = useSelector(state => state.auth);
   if (!isAuthenticated) return <Navigate to="/login" />;
-  if (user?.role !== 'Admin') return <Navigate to="/dashboard" />;
+  if (user?.role !== 'Admin') return <Navigate to="/workspaces" />;
   return children;
 };
 
@@ -63,7 +64,7 @@ function App() {
       <Routes>
         <Route
           path="/"
-          element={isAuthenticated ? <Navigate to="/dashboard" /> : <Landing />}
+          element={isAuthenticated ? <Navigate to="/workspaces" /> : <Landing />}
         />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
@@ -72,6 +73,7 @@ function App() {
         <Route element={<PrivateRoute><Layout /></PrivateRoute>}>
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="documents" element={<Documents />} />
+          <Route path="workspaces" element={<Workspaces />} />
           <Route path="profile" element={<Profile />} />
           <Route path="support" element={<Support />} />
           <Route path="billing" element={<Billing />} />

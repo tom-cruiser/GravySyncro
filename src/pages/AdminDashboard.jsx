@@ -21,6 +21,7 @@ import AdminTenants from '../components/AdminTenants';
 import AdminActivityLogs from '../components/AdminActivityLogs';
 import AdminMessages from '../components/AdminMessages';
 import SystemHealth from '../components/SystemHealth';
+import AdminBrandingSettings from '../components/AdminBrandingSettings';
 import './AdminDashboard.css';
 
 const AdminDashboard = () => {
@@ -149,6 +150,13 @@ const AdminDashboard = () => {
           <HeartPulse size={18} />
           System Health
         </button>
+        <button
+          className={`admin-tab ${activeTab === 'branding' ? 'active' : ''}`}
+          onClick={() => setActiveTab('branding')}
+        >
+          <Building2 size={18} />
+          Branding
+        </button>
       </div>
 
       {activeTab === 'overview' && (
@@ -237,6 +245,12 @@ const AdminDashboard = () => {
       {activeTab === 'health' && (
         <div className="admin-tab-content">
           <SystemHealth />
+        </div>
+      )}
+
+      {activeTab === 'branding' && (
+        <div className="admin-tab-content">
+          <AdminBrandingSettings />
         </div>
       )}
     </div>

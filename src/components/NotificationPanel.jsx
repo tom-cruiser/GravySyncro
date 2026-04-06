@@ -16,10 +16,12 @@ const NotificationPanel = ({ onClose }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { token, user } = useSelector((state) => state.auth);
+  const { currentWorkspace } = useSelector((state) => state.workspace);
   const { inbox, unreadCount } = useSelector(
     (state) => state.notifications,
   );
   const [loading, setLoading] = useState(true);
+  const [workspaceLabel, setWorkspaceLabel] = useState('Workspace');
 
   const isServerNotificationId = (id) =>
     typeof id === 'string' && /^[a-f\d]{24}$/i.test(id);
@@ -32,6 +34,14 @@ const NotificationPanel = ({ onClose }) => {
       return () => clearInterval(interval);
     }
   }, [token]);
+
+  const withTenantTerminology = (text = '') => {
+    if (!text) return '';
+    const singular = workspaceLabel.endsWith('s') ? workspaceLabel.slice(0, -1) : workspaceLabel;
+    return String(text)
+      .replace(/\bworkspaces\b/gi, workspaceLabel)
+      .replace(/\bworkspace\b/gi, singular);
+  };
 
   const fetchNotifications = async () => {
     try {
@@ -51,8 +61,10 @@ const NotificationPanel = ({ onClose }) => {
           message: notif.message,
           read: !!notif.read,
           timestamp: notif.createdAt,
+          actionUrl: notif.actionUrl,
           relatedMessage: notif.relatedMessage,
           relatedDocument: notif.relatedDocument,
+          relatedWorkspace: notif.relatedWorkspace,
           relatedUser: notif.relatedUser,
         }),
       );
@@ -67,6 +79,14 @@ const NotificationPanel = ({ onClose }) => {
   };
 
   const displayNotifications = inbox.length > 0 ? inbox : [];
+  const visibleNotifications = currentWorkspace?._id
+    ? displayNotifications.filter((notification) => {
+        const relatedWorkspaceId = notification.relatedWorkspace?._id || notification.relatedWorkspace;
+        if (relatedWorkspaceId && String(relatedWorkspaceId) === String(currentWorkspace._id)) return true;
+        if (notification.actionUrl?.includes(`workspaceId=${currentWorkspace._id}`)) return true;
+        return ['support_response', 'message_received'].includes(notification.type) === false;
+      })
+    : displayNotifications;
 
   const getTimeAgo = (timestamp) => {
     const now = new Date();
@@ -139,7 +159,9 @@ const NotificationPanel = ({ onClose }) => {
     }
 
     // Navigate based on notification type
-    if (notification.type === "support_response") {
+    if (notification.actionUrl) {
+      navigate(notification.actionUrl);
+    } else if (notification.type === "support_response") {
       // Navigate to support page to view messages, set tab to my-messages
       navigate("/support", { state: { activeTab: "my-messages" } });
     } else if (
@@ -163,6 +185,11 @@ const NotificationPanel = ({ onClose }) => {
         );
       case "document_shared":
       case "document_uploaded":
+      case "workspace_uploaded":
+      case "workspace_comment":
+      case "workspace_archived":
+      case "workspace_reopened":
+      case "workspace_assigned":
         return <Bell size={18} className="notification-icon-document" />;
       default:
         return <Bell size={18} className="notification-icon-default" />;
@@ -188,13 +215,13 @@ const NotificationPanel = ({ onClose }) => {
       <div className="notification-list">
         {loading ? (
           <div className="notification-loading">Loading...</div>
-        ) : displayNotifications.length === 0 ? (
+        ) : visibleNotifications.length === 0 ? (
           <div className="no-notifications">
             <Bell size={48} />
-            <p>No notifications yet</p>
+            <p>{currentWorkspace?._id ? 'No notifications for this project yet' : 'No notifications yet'}</p>
           </div>
         ) : (
-          displayNotifications.map((notification) => (
+          visibleNotifications.map((notification) => (
             <div
               key={notification.id}
               className={`notification-item ${notification.read ? "read" : "unread"}`}
@@ -207,10 +234,10 @@ const NotificationPanel = ({ onClose }) => {
               <div className="notification-content">
                 {notification.title && (
                   <p className="notification-title-text">
-                    {notification.title}
+                    {withTenantTerminology(notification.title)}
                   </p>
                 )}
-                <p className="notification-message">{notification.message}</p>
+                <p className="notification-message">{withTenantTerminology(notification.message)}</p>
                 <span className="notification-time">
                   {getTimeAgo(notification.timestamp)}
                 </span>

@@ -12,10 +12,10 @@ const plans = [
     icon: HardDrive,
     color: 'var(--primary)',
     features: [
-      '50 GB Cloud Storage',
+      '50 GB shared enterprise storage pool',
       'Real-time Collaboration',
       'Version History (30 days)',
-      'Up to 5 team members',
+      'Up to 5 team members in one enterprise',
       'Email Support',
     ],
     popular: false,
@@ -29,10 +29,10 @@ const plans = [
     icon: Zap,
     color: '#8b5cf6',
     features: [
-      '100 GB Cloud Storage',
+      '100 GB shared enterprise storage pool',
       'Real-time Collaboration',
       'Version History (90 days)',
-      'Up to 20 team members',
+      'Up to 20 team members in one enterprise',
       'Priority Email Support',
       'Advanced Analytics',
     ],
@@ -47,10 +47,10 @@ const plans = [
     icon: Shield,
     color: '#0ea5e9',
     features: [
-      '200 GB Cloud Storage',
+      '200 GB shared enterprise storage pool',
       'Real-time Collaboration',
       'Unlimited Version History',
-      'Unlimited team members',
+      'Unlimited team members in one enterprise',
       '24/7 Priority Support',
       'Advanced Analytics',
       'Custom Integrations',
@@ -78,7 +78,7 @@ const Billing = () => {
       <div className="billing-header">
         <h1>Billing &amp; Plans</h1>
         <p className="subtitle">
-          Choose the plan that fits your storage needs. Upgrade or downgrade at any time.
+          Choose the shared enterprise plan that fits your organization. Every member draws from the same storage pool.
         </p>
       </div>
 
@@ -99,7 +99,7 @@ const Billing = () => {
               </div>
 
               <h2 className="plan-name">{plan.name}</h2>
-              <p className="plan-storage">{plan.storage} Storage</p>
+              <p className="plan-storage">{plan.storage} shared pool</p>
 
               <div className="plan-price">
                 <span className="price-dollar">$</span>

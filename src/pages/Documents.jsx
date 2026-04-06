@@ -1,20 +1,29 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useDropzone } from 'react-dropzone';
-import { Upload, X, Film, FileText, RotateCcw, CheckCircle2, AlertCircle } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Upload, X, Film, FileText, RotateCcw, CheckCircle2, AlertCircle, MessageCircle } from 'lucide-react';
 import axios from 'axios';
+import { io } from 'socket.io-client';
+import api from '../config/api';
 import {
   fetchDocumentsStart,
   fetchDocumentsSuccess,
   fetchDocumentsFailure,
   uploadDocumentStart,
+  uploadDocumentProgress,
   uploadDocumentSuccess,
   uploadDocumentFailure,
   deleteDocument,
 } from '../features/documents/documentsSlice';
 import { addNotification } from '../features/notifications/notificationsSlice';
+import { logout } from '../features/auth/authSlice';
+import { setCurrentWorkspace } from '../features/workspace/workspaceSlice';
 import DocumentList from '../components/DocumentList';
 import FolderBrowser from '../components/FolderBrowser';
+import Comments from '../components/Comments';
+import DocumentLightbox, { canPreviewInLightbox } from '../components/DocumentLightbox';
+import VersionHistory from '../components/VersionHistory';
 import SearchBar from '../components/SearchBar';
 import ShareDocument from '../components/ShareDocument';
 import './Documents.css';
@@ -101,7 +110,10 @@ const mkVideoUploadState = (file) => ({
 // ─── Component ────────────────────────────────────────────────────────────────
 const Documents = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { token } = useSelector(state => state.auth);
+  const { currentWorkspace } = useSelector((state) => state.workspace);
   const { documents, isUploading, uploadProgress, isLoading, filters } = useSelector(state => state.documents);
 
   // Tab: 'files' | 'videos'
@@ -112,6 +124,13 @@ const Documents = () => {
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareTargetDocument, setShareTargetDocument] = useState(null);
   const [uploadFiles, setUploadFiles] = useState([]);
+  const [workspaces, setWorkspaces] = useState([]);
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState('');
+  const [sidebarDocument, setSidebarDocument] = useState(null);
+  const [sidebarVideo, setSidebarVideo] = useState(null);
+  const [sidebarLoading, setSidebarLoading] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [activePreviewId, setActivePreviewId] = useState(null);
   const folderInputRef = useRef(null);
   const [contentView, setContentView] = useState('folders');
   const [currentPage, setCurrentPage] = useState(1);
@@ -128,7 +147,11 @@ const Documents = () => {
   const [videoPage, setVideoPage] = useState(1);
   const [videoTotalPages, setVideoTotalPages] = useState(1);
   const [videoTotal, setVideoTotal] = useState(0);
+  const [filePageInput, setFilePageInput] = useState('1');
+  const [videoPageInput, setVideoPageInput] = useState('1');
   const videoUploadQueue = useRef([]); // tracks in-flight uploads to cap concurrency
+  const routeWorkspaceId = searchParams.get('workspaceId') || '';
+  const activeWorkspaceId = selectedWorkspaceId || routeWorkspaceId;
 
   // ── Helpers ──────────────────────────────────────────────────────────────
   const authHeaders = () => ({ Authorization: `Bearer ${token}` });
@@ -139,6 +162,17 @@ const Documents = () => {
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+  };
+
+  const getVisiblePages = (page, pages, radius = 2) => {
+    if (pages <= 1) return [1];
+    const start = Math.max(1, page - radius);
+    const end = Math.min(pages, page + radius);
+    const list = [];
+    for (let index = start; index <= end; index += 1) {
+      list.push(index);
+    }
+    return list;
   };
 
   const mapDocument = (doc) => {
@@ -165,7 +199,193 @@ const Documents = () => {
   useEffect(() => {
     if (!token || activeTab !== 'files') return;
     fetchDocuments(currentPage);
-  }, [token, currentPage, filters.searchQuery, filters.type, filters.sortBy, activeTab]);
+  }, [token, currentPage, filters.searchQuery, filters.type, filters.sortBy, activeTab, activeWorkspaceId]);
+
+  useEffect(() => {
+    setFilePageInput(String(currentPage));
+  }, [currentPage]);
+
+  useEffect(() => {
+    setVideoPageInput(String(videoPage));
+  }, [videoPage]);
+
+  useEffect(() => {
+    if (!token) return undefined;
+
+    const socketBaseUrl = (import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL || '').replace(/\/api\/v1\/?$/, '');
+    const socket = io(socketBaseUrl || window.location.origin, {
+      transports: ['websocket'],
+      withCredentials: true,
+    });
+
+    socket.on('connect', () => {
+      socket.emit('authenticate', { token });
+    });
+
+    socket.on('document:deleted', ({ documentId, workspaceId }) => {
+      if (documentId && sidebarDocument && String(documentId) === String(sidebarDocument.id || sidebarDocument._id)) {
+        closeSidebar();
+      }
+
+      if (currentWorkspace?._id && workspaceId && String(currentWorkspace._id) !== String(workspaceId)) {
+        return;
+      }
+
+      if (activeTab === 'files') {
+        fetchDocuments(currentPage);
+      }
+    });
+
+    socket.on('workspace:deleted', ({ workspaceId }) => {
+      if (!workspaceId || !currentWorkspace?._id) return;
+      if (String(workspaceId) !== String(currentWorkspace._id)) return;
+
+      dispatch(setCurrentWorkspace(null));
+      navigate('/workspaces');
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [token, activeTab, currentPage, currentWorkspace?._id, sidebarDocument, dispatch, navigate]);
+
+  useEffect(() => {
+    if (!token) return;
+
+    const fetchWorkspaces = async () => {
+      try {
+        const response = await axios.get(`${import.meta.env.VITE_API_URL}/workspaces`, {
+          headers: authHeaders(),
+        });
+        setWorkspaces(response.data?.data?.workspaces || []);
+      } catch (error) {
+        if (error?.response?.status === 401) {
+          dispatch(logout());
+          navigate('/login');
+          return;
+        }
+        setWorkspaces([]);
+      }
+    };
+
+    fetchWorkspaces();
+  }, [token]);
+
+  useEffect(() => {
+    const workspaceId = searchParams.get('workspaceId');
+    if (!workspaceId) return;
+
+    const workspace = workspaces.find((item) => String(item._id) === String(workspaceId)) || null;
+    if (workspace) {
+      dispatch(setCurrentWorkspace(workspace));
+      setSelectedWorkspaceId(String(workspace._id));
+      return;
+    }
+
+    if (currentWorkspace?._id !== workspaceId) {
+      dispatch(setCurrentWorkspace({ _id: workspaceId, name: 'Workspace' }));
+      setSelectedWorkspaceId(workspaceId);
+    }
+  }, [searchParams, workspaces, currentWorkspace, dispatch]);
+
+  useEffect(() => {
+    if (currentWorkspace?._id) {
+      setSelectedWorkspaceId(String(currentWorkspace._id));
+    }
+  }, [currentWorkspace?._id]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeWorkspaceId]);
+
+  useEffect(() => {
+    const workspaceId = searchParams.get('workspaceId');
+    if (workspaceId) {
+      const workspace = workspaces.find((item) => String(item._id) === String(workspaceId)) || null;
+      if (workspace) {
+        dispatch(setCurrentWorkspace(workspace));
+        setSelectedWorkspaceId(workspace._id);
+      } else if (currentWorkspace?._id !== workspaceId) {
+        const fallbackWorkspace = { _id: workspaceId, name: 'Workspace' };
+        dispatch(setCurrentWorkspace(fallbackWorkspace));
+        setSelectedWorkspaceId(workspaceId);
+      }
+    }
+  }, [searchParams, workspaces, currentWorkspace, dispatch]);
+
+  useEffect(() => {
+    if (currentWorkspace?._id) {
+      setSelectedWorkspaceId(String(currentWorkspace._id));
+    }
+  }, [currentWorkspace?._id]);
+
+  useEffect(() => {
+    const viewId = searchParams.get('view');
+    if (!viewId || !token) {
+      setSidebarDocument(null);
+      return;
+    }
+
+    const existingDocument = documents.find((doc) => String(doc.id || doc._id) === viewId);
+    if (existingDocument) {
+      setSidebarDocument(existingDocument);
+      setSidebarLoading(false);
+      return;
+    }
+
+    const fetchSelectedDocument = async () => {
+      setSidebarLoading(true);
+      try {
+        const response = await axios.get(api.endpoints.documents.byId(viewId), {
+          headers: authHeaders(),
+        });
+        setSidebarDocument(mapDocument(response.data?.data?.document || {}));
+      } catch (error) {
+        if (error?.response?.status === 401) {
+          dispatch(logout());
+          navigate('/login');
+          return;
+        }
+        setSidebarDocument(null);
+      } finally {
+        setSidebarLoading(false);
+      }
+    };
+
+    fetchSelectedDocument();
+  }, [searchParams, token, documents]);
+
+  useEffect(() => {
+    const videoViewId = searchParams.get('videoView');
+    if (!videoViewId || !token) {
+      setSidebarVideo(null);
+      return;
+    }
+
+    const existingVideo = videos.find((video) => String(video._id || video.id) === String(videoViewId));
+    if (existingVideo) {
+      setSidebarVideo(existingVideo);
+      return;
+    }
+
+    const fetchVideo = async () => {
+      try {
+        const response = await axios.get(`${import.meta.env.VITE_API_URL}/videos/${videoViewId}`, {
+          headers: authHeaders(),
+        });
+        setSidebarVideo(response.data?.data?.video || null);
+      } catch (error) {
+        if (error?.response?.status === 401) {
+          dispatch(logout());
+          navigate('/login');
+          return;
+        }
+        setSidebarVideo(null);
+      }
+    };
+
+    fetchVideo();
+  }, [searchParams, token, videos]);
 
   const fetchDocuments = async (page = currentPage) => {
     dispatch(fetchDocumentsStart());
@@ -180,6 +400,7 @@ const Documents = () => {
         params: {
           page, limit: pageSize,
           sortBy: sortByMap[filters.sortBy] || '-createdAt',
+          ...(activeWorkspaceId ? { workspaceId: activeWorkspaceId } : {}),
           ...(filters.searchQuery?.trim() ? { search: filters.searchQuery.trim() } : {}),
           ...(filters.type && filters.type !== 'all' ? { category: filters.type } : {}),
         },
@@ -189,6 +410,11 @@ const Documents = () => {
       setTotalPages(Math.max(1, Number(response.data?.pages) || 1));
       setTotalDocuments(Number(response.data?.total) || docs.length);
     } catch (error) {
+      if (error?.response?.status === 401) {
+        dispatch(logout());
+        navigate('/login');
+        return;
+      }
       dispatch(fetchDocumentsFailure('Failed to load documents'));
     }
   };
@@ -292,6 +518,9 @@ const Documents = () => {
     if (!uploadFiles.length) return;
     dispatch(uploadDocumentStart());
     try {
+      const totalBytes = uploadFiles.reduce((sum, file) => sum + (file.size || 0), 0);
+      let uploadedBytesBaseline = 0;
+
       for (let i = 0; i < uploadFiles.length; i++) {
         const file = uploadFiles[i];
         const relativePath = file.webkitRelativePath || file.name;
@@ -306,16 +535,33 @@ const Documents = () => {
         formData.append('category', metadata.type || 'General');
         formData.append('folderPath', derivedFolderPath);
         formData.append('relativePath', relativePath);
+        if (selectedWorkspaceId) formData.append('workspaceId', selectedWorkspaceId);
 
         const response = await axios.post(`${import.meta.env.VITE_API_URL}/documents`, formData, {
           headers: authHeaders(),
+          onUploadProgress: (event) => {
+            const fileProgress = event.total ? (event.loaded / event.total) : 0;
+            const aggregateBytes = uploadedBytesBaseline + (file.size * fileProgress);
+            const percent = totalBytes > 0 ? Math.min(99, Math.round((aggregateBytes / totalBytes) * 100)) : 0;
+            dispatch(uploadDocumentProgress(percent));
+          },
         });
+
+        uploadedBytesBaseline += file.size;
+        const afterFilePercent = totalBytes > 0
+          ? Math.min(99, Math.round((uploadedBytesBaseline / totalBytes) * 100))
+          : 0;
+        dispatch(uploadDocumentProgress(afterFilePercent));
+
         dispatch(uploadDocumentSuccess(mapDocument(response.data?.data?.document || {})));
-        dispatch(addNotification({ id: Date.now() + i, type: 'success', message: `${file.name} uploaded successfully`, read: false, timestamp: new Date().toISOString() }));
+        dispatch(addNotification({ id: Date.now() + i, type: 'success', message: `${relativePath} uploaded successfully`, read: false, timestamp: new Date().toISOString() }));
       }
+
+      dispatch(uploadDocumentProgress(100));
       setShowUploadModal(false);
       setUploadFiles([]);
       setMetadata({ title: '', description: '', type: 'General' });
+      setSelectedWorkspaceId('');
       setCurrentPage(1);
       fetchDocuments(1);
     } catch (err) {
@@ -520,20 +766,59 @@ const Documents = () => {
   };
 
   const handleView = async (doc) => {
-    try {
-      const blob = await fetchDocumentBlob(doc, 'inline');
-      const url = window.URL.createObjectURL(blob);
-      window.open(url, '_blank', 'noopener,noreferrer');
-      setTimeout(() => window.URL.revokeObjectURL(url), 60000);
-    } catch (e) {
-      const msg = e.response?.data?.message || e.message || 'Preview failed';
-      if (msg.toLowerCase().includes('cannot be previewed') || msg.toLowerCase().includes('corrupted')) {
-        if (window.confirm(`${msg}\n\nDownload instead?`)) await handleDownload(doc);
-      } else { alert(msg); }
+    const id = String(doc?.id || doc?._id || '');
+    if (!id) return;
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set('view', id);
+    if (selectedWorkspaceId) {
+      nextParams.set('workspaceId', selectedWorkspaceId);
     }
+    setSearchParams(nextParams, { replace: false });
+    setSidebarDocument(doc);
+    setSidebarLoading(false);
   };
 
   const handleShare = (doc) => { setShareTargetDocument(doc); setShowShareModal(true); };
+
+  const closeSidebar = () => {
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('view');
+    nextParams.delete('videoView');
+    setSearchParams(nextParams, { replace: true });
+    setLightboxOpen(false);
+    setActivePreviewId(null);
+    setSidebarDocument(null);
+    setSidebarVideo(null);
+    setSidebarLoading(false);
+  };
+
+  const handleLightboxAuthError = () => {
+    dispatch(logout());
+    navigate('/login');
+  };
+
+  const refreshSidebarDocument = async () => {
+    if (!sidebarDocument?.id && !sidebarDocument?._id) return;
+    const id = sidebarDocument.id || sidebarDocument._id;
+    try {
+      const response = await axios.get(api.endpoints.documents.byId(id), {
+        headers: authHeaders(),
+      });
+      setSidebarDocument(mapDocument(response.data?.data?.document || {}));
+      fetchDocuments(currentPage);
+    } catch (_) {
+      // No-op in sidebar refresh
+    }
+  };
+
+  const mediaPreviewItems = React.useMemo(() => {
+    const merged = [...documents];
+    if (sidebarDocument && !merged.some((doc) => String(doc.id || doc._id) === String(sidebarDocument.id || sidebarDocument._id))) {
+      merged.push(sidebarDocument);
+    }
+    return merged.filter((doc) => canPreviewInLightbox(doc));
+  }, [documents, sidebarDocument]);
 
   const handleDelete = async (doc) => {
     if (!window.confirm('Delete this document?')) return;
@@ -549,12 +834,72 @@ const Documents = () => {
     } catch (e) { alert(e.response?.data?.message || 'Delete failed'); }
   };
 
+  const handleDeleteFolder = async (folderPath) => {
+    const normalizedFolderPath = String(folderPath || '').replace(/^\/+|\/+$/g, '');
+    if (!normalizedFolderPath) return;
+
+    const docsInFolder = documents.filter((doc) => {
+      const docPath = String(doc.folderPath || '').replace(/^\/+|\/+$/g, '');
+      return docPath === normalizedFolderPath || docPath.startsWith(`${normalizedFolderPath}/`);
+    });
+
+    if (!docsInFolder.length) {
+      alert('No files found in this folder.');
+      return;
+    }
+
+    const confirmed = window.confirm(`Delete folder "${normalizedFolderPath}" and ${docsInFolder.length} file(s)?`);
+    if (!confirmed) return;
+
+    try {
+      const deleteResults = await Promise.allSettled(
+        docsInFolder.map((doc) => {
+          const id = doc.id || doc._id;
+          return axios.delete(`${import.meta.env.VITE_API_URL}/documents/${id}`, { headers: authHeaders() });
+        }),
+      );
+
+      const deletedCount = deleteResults.filter((result) => result.status === 'fulfilled').length;
+      const failedCount = deleteResults.length - deletedCount;
+
+      if (deletedCount > 0) {
+        dispatch(addNotification({
+          id: Date.now(),
+          type: 'success',
+          message: `Deleted ${deletedCount} file(s) from ${normalizedFolderPath}`,
+          read: false,
+          timestamp: new Date().toISOString(),
+        }));
+        fetchDocuments(currentPage);
+      }
+
+      if (failedCount > 0) {
+        alert(`Deleted ${deletedCount} file(s), but ${failedCount} failed.`);
+      }
+    } catch (error) {
+      alert(error?.response?.data?.message || 'Folder delete failed');
+    }
+  };
+
   // ── Video actions ─────────────────────────────────────────────────────────
   const handleVideoDownload = async (video) => {
     try {
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/videos/${video._id}/download`, { headers: authHeaders() });
       window.open(res.data.data.url, '_blank', 'noopener,noreferrer');
     } catch (e) { alert(e.response?.data?.message || 'Download failed'); }
+  };
+
+  const openVideoConversation = (video) => {
+    const id = String(video?._id || video?.id || '');
+    if (!id) return;
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set('videoView', id);
+    if (selectedWorkspaceId) {
+      nextParams.set('workspaceId', selectedWorkspaceId);
+    }
+    setSearchParams(nextParams, { replace: false });
+    setSidebarVideo(video);
   };
 
   const handleVideoDelete = async (video) => {
@@ -632,15 +977,69 @@ const Documents = () => {
           </div>
 
           {contentView === 'folders' ? (
-            <FolderBrowser documents={documents} onDownload={handleDownload} onShare={handleShare} onDelete={handleDelete} onView={handleView} />
+            <FolderBrowser
+              documents={documents}
+              onDownload={handleDownload}
+              onShare={handleShare}
+              onDelete={handleDelete}
+              onDeleteFolder={handleDeleteFolder}
+              onView={handleView}
+              rootLabel={currentWorkspace?.name || 'Workspace'}
+            />
           ) : (
             <DocumentList documents={documents} onDownload={handleDownload} onShare={handleShare} onDelete={handleDelete} onView={handleView} />
           )}
 
           <div className="documents-pagination">
-            <button type="button" className="btn-secondary" disabled={currentPage <= 1 || isLoading} onClick={() => setCurrentPage(p => Math.max(1, p - 1))}>Previous</button>
-            <span className="pagination-info">Page {currentPage} of {totalPages} • {totalDocuments} total files</span>
-            <button type="button" className="btn-secondary" disabled={currentPage >= totalPages || isLoading} onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}>Next</button>
+            <div className="pagination-left">
+              <button type="button" className="btn-secondary" disabled={currentPage <= 1 || isLoading} onClick={() => setCurrentPage(1)}>First</button>
+              <button type="button" className="btn-secondary" disabled={currentPage <= 1 || isLoading} onClick={() => setCurrentPage(p => Math.max(1, p - 1))}>Previous</button>
+            </div>
+            <div className="pagination-center">
+              <div className="pagination-pages" role="group" aria-label="File pages">
+                {getVisiblePages(currentPage, totalPages).map((pageNumber) => (
+                  <button
+                    key={`file-page-${pageNumber}`}
+                    type="button"
+                    className={`btn-secondary pagination-page-btn ${pageNumber === currentPage ? 'active' : ''}`}
+                    onClick={() => setCurrentPage(pageNumber)}
+                    disabled={isLoading}
+                  >
+                    {pageNumber}
+                  </button>
+                ))}
+              </div>
+              <span className="pagination-info">Page {currentPage} of {totalPages} • {totalDocuments} total files</span>
+            </div>
+            <div className="pagination-right">
+              <div className="pagination-jump">
+                <label htmlFor="file-page-jump">Go to</label>
+                <input
+                  id="file-page-jump"
+                  type="number"
+                  min="1"
+                  max={totalPages}
+                  value={filePageInput}
+                  onChange={(event) => setFilePageInput(event.target.value)}
+                  disabled={isLoading || totalPages <= 1}
+                />
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  disabled={isLoading || totalPages <= 1}
+                  onClick={() => {
+                    const parsed = Number(filePageInput);
+                    if (!Number.isFinite(parsed)) return;
+                    const safePage = Math.min(totalPages, Math.max(1, Math.trunc(parsed)));
+                    setCurrentPage(safePage);
+                  }}
+                >
+                  Go
+                </button>
+              </div>
+              <button type="button" className="btn-secondary" disabled={currentPage >= totalPages || isLoading} onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}>Next</button>
+              <button type="button" className="btn-secondary" disabled={currentPage >= totalPages || isLoading} onClick={() => setCurrentPage(totalPages)}>Last</button>
+            </div>
           </div>
         </>
       )}
@@ -664,6 +1063,9 @@ const Documents = () => {
                     {v.checksum && <p className="video-card-hash" title={`SHA-256: ${v.checksum}`}>SHA-256: {v.checksum.slice(0, 12)}…</p>}
                   </div>
                   <div className="video-card-actions">
+                    <button className="btn-secondary btn-sm" onClick={() => openVideoConversation(v)}>
+                      <MessageCircle size={14} /> Conversation
+                    </button>
                     <button className="btn-secondary btn-sm" onClick={() => handleVideoDownload(v)}>Download</button>
                     <button className="btn-danger btn-sm" onClick={() => handleVideoDelete(v)}>Delete</button>
                   </div>
@@ -673,9 +1075,54 @@ const Documents = () => {
           )}
 
           <div className="documents-pagination">
-            <button type="button" className="btn-secondary" disabled={videoPage <= 1} onClick={() => setVideoPage(p => Math.max(1, p - 1))}>Previous</button>
-            <span className="pagination-info">Page {videoPage} of {videoTotalPages} • {videoTotal} total videos</span>
-            <button type="button" className="btn-secondary" disabled={videoPage >= videoTotalPages} onClick={() => setVideoPage(p => Math.min(videoTotalPages, p + 1))}>Next</button>
+            <div className="pagination-left">
+              <button type="button" className="btn-secondary" disabled={videoPage <= 1} onClick={() => setVideoPage(1)}>First</button>
+              <button type="button" className="btn-secondary" disabled={videoPage <= 1} onClick={() => setVideoPage(p => Math.max(1, p - 1))}>Previous</button>
+            </div>
+            <div className="pagination-center">
+              <div className="pagination-pages" role="group" aria-label="Video pages">
+                {getVisiblePages(videoPage, videoTotalPages).map((pageNumber) => (
+                  <button
+                    key={`video-page-${pageNumber}`}
+                    type="button"
+                    className={`btn-secondary pagination-page-btn ${pageNumber === videoPage ? 'active' : ''}`}
+                    onClick={() => setVideoPage(pageNumber)}
+                  >
+                    {pageNumber}
+                  </button>
+                ))}
+              </div>
+              <span className="pagination-info">Page {videoPage} of {videoTotalPages} • {videoTotal} total videos</span>
+            </div>
+            <div className="pagination-right">
+              <div className="pagination-jump">
+                <label htmlFor="video-page-jump">Go to</label>
+                <input
+                  id="video-page-jump"
+                  type="number"
+                  min="1"
+                  max={videoTotalPages}
+                  value={videoPageInput}
+                  onChange={(event) => setVideoPageInput(event.target.value)}
+                  disabled={videoTotalPages <= 1}
+                />
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  disabled={videoTotalPages <= 1}
+                  onClick={() => {
+                    const parsed = Number(videoPageInput);
+                    if (!Number.isFinite(parsed)) return;
+                    const safePage = Math.min(videoTotalPages, Math.max(1, Math.trunc(parsed)));
+                    setVideoPage(safePage);
+                  }}
+                >
+                  Go
+                </button>
+              </div>
+              <button type="button" className="btn-secondary" disabled={videoPage >= videoTotalPages} onClick={() => setVideoPage(p => Math.min(videoTotalPages, p + 1))}>Next</button>
+              <button type="button" className="btn-secondary" disabled={videoPage >= videoTotalPages} onClick={() => setVideoPage(videoTotalPages)}>Last</button>
+            </div>
           </div>
         </>
       )}
@@ -704,11 +1151,27 @@ const Documents = () => {
               {uploadFiles.length > 0 && (
                 <div className="selected-files">
                   <h3>Selected ({uploadFiles.length})</h3>
-                  <ul>{uploadFiles.map((f, i) => <li key={i}>{f.name} — {(f.size / 1024 / 1024).toFixed(2)} MB</li>)}</ul>
+                  <ul>
+                    {uploadFiles.map((f, i) => {
+                      const relativePath = f.webkitRelativePath || f.name;
+                      return <li key={i}>{relativePath} — {(f.size / 1024 / 1024).toFixed(2)} MB</li>;
+                    })}
+                  </ul>
                 </div>
               )}
 
               <div className="metadata-form">
+                <div className="form-group">
+                  <label>Workspace</label>
+                  <select value={selectedWorkspaceId} onChange={(e) => setSelectedWorkspaceId(e.target.value)}>
+                    <option value="">No workspace</option>
+                    {workspaces.map((workspace) => (
+                      <option key={workspace._id} value={workspace._id}>
+                        {workspace.name} {workspace.status === 'archived' ? '(Archived)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <div className="form-group">
                   <label>Title</label>
                   <input type="text" value={metadata.title} onChange={e => setMetadata({ ...metadata, title: e.target.value })} placeholder="Document title" />
@@ -855,6 +1318,90 @@ const Documents = () => {
           </div>
         </div>
       )}
+
+      {sidebarDocument && (
+        <div className="document-sidebar-overlay" onClick={closeSidebar}>
+          <aside className="document-sidebar" onClick={(e) => e.stopPropagation()}>
+            <div className="document-sidebar-header">
+              <div>
+                <p className="document-sidebar-eyebrow">File Conversation</p>
+                <h2>{sidebarDocument.title}</h2>
+                <p className="document-sidebar-meta">{sidebarDocument.relativePath || sidebarDocument.folderPath || 'Root'}</p>
+              </div>
+              <button className="close-btn" onClick={closeSidebar}>
+                <X size={24} />
+              </button>
+            </div>
+
+            {sidebarLoading ? (
+              <div className="document-sidebar-loading">Loading document...</div>
+            ) : (
+              <div className="document-sidebar-body">
+                <div className="document-sidebar-card">
+                  <strong>{sidebarDocument.title}</strong>
+                  <p>{sidebarDocument.description || 'No description provided.'}</p>
+                  <small>{sidebarDocument.size} • {sidebarDocument.type}</small>
+                </div>
+                <Comments
+                  documentId={sidebarDocument.id || sidebarDocument._id}
+                  onClose={closeSidebar}
+                  canPreview={canPreviewInLightbox(sidebarDocument)}
+                  onOpenPreview={() => {
+                    setActivePreviewId(String(sidebarDocument.id || sidebarDocument._id));
+                    setLightboxOpen(true);
+                  }}
+                />
+                <VersionHistory
+                  documentId={sidebarDocument.id || sidebarDocument._id}
+                  token={token}
+                  onRevert={refreshSidebarDocument}
+                />
+              </div>
+            )}
+          </aside>
+        </div>
+      )}
+
+      {sidebarVideo && (
+        <div className="document-sidebar-overlay" onClick={closeSidebar}>
+          <aside className="document-sidebar" onClick={(event) => event.stopPropagation()}>
+            <div className="document-sidebar-header">
+              <div>
+                <p className="document-sidebar-eyebrow">Video Conversation</p>
+                <h2>{sidebarVideo.title || sidebarVideo.fileName || 'Video'}</h2>
+                <p className="document-sidebar-meta">
+                  {(sidebarVideo.fileExtension || 'VIDEO').toString().toUpperCase()} • {formatFileSize(sidebarVideo.fileSize || 0)}
+                </p>
+              </div>
+              <button className="close-btn" onClick={closeSidebar}>
+                <X size={24} />
+              </button>
+            </div>
+            <div className="document-sidebar-body">
+              <div className="document-sidebar-card">
+                <strong>{sidebarVideo.title || sidebarVideo.fileName || 'Video'}</strong>
+                <p>{sidebarVideo.description || 'No description provided.'}</p>
+                <small>Use this panel to discuss updates and decisions for this video.</small>
+              </div>
+              <Comments
+                resourceType="video"
+                resourceId={sidebarVideo._id || sidebarVideo.id}
+                onClose={closeSidebar}
+              />
+            </div>
+          </aside>
+        </div>
+      )}
+
+      <DocumentLightbox
+        isOpen={lightboxOpen && !!sidebarDocument}
+        token={token}
+        mediaItems={mediaPreviewItems}
+        activeDocumentId={activePreviewId}
+        onNavigate={(nextDocId) => setActivePreviewId(nextDocId)}
+        onClose={() => setLightboxOpen(false)}
+        onAuthError={handleLightboxAuthError}
+      />
     </div>
   );
 };

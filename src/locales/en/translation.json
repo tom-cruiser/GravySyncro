@@ -216,47 +216,105 @@
   },
   "landing": {
     "nav": {
+      "features": "Features",
       "contact": "Contact",
       "getStarted": "Get Started"
     },
     "hero": {
-      "eyebrow": "Secure document operations for modern teams",
-      "title": "Welcome to GravySyncro",
-      "description": "GravySyncro helps organizations archive, organize, share, and monitor critical documents in one secure workspace. From uploads to collaboration and admin-level control, every action is synchronized in real time.",
-      "primaryCta": "Get Started",
-      "secondaryCta": "Talk to us",
+      "eyebrow": "Enterprise-grade document operations",
+      "title": "Operate documents with confidence",
+      "description": "GravySyncro unifies secure archiving, structured collaboration, and administrative governance in one controlled workspace. Every document action is traceable, role-aware, and synchronized in real time.",
+      "primaryCta": "Start secure access",
+      "secondaryCta": "Speak with our team",
       "points": {
-        "one": "Tenant-aware access and control",
-        "two": "Fast upload, search, and structured organization",
-        "three": "Alerts, activity logs, and storage governance"
+        "one": "Multi-tenant control with role-based access",
+        "two": "High-speed upload, retrieval, and structured organization",
+        "three": "Real-time alerts, audit trails, and storage governance"
       }
     },
     "panel": {
-      "title": "Why teams choose GravySyncro",
+      "title": "Why leading teams choose GravySyncro",
       "items": {
         "security": "Security-first architecture",
-        "collaboration": "Versioning and collaboration tools",
-        "notifications": "Smart notifications and admin insights"
+        "collaboration": "Controlled collaboration and versioning",
+        "notifications": "Operational insights and smart notifications"
       }
     },
     "explain": {
       "app": {
-        "title": "What the app does",
-        "description": "GravySyncro is a SaaS platform for secure document archiving and collaborative workflows. Users can upload files, browse by structure, share documents, and keep version history with controlled permissions."
+        "title": "Platform overview",
+        "description": "GravySyncro is a secure SaaS platform for document lifecycle management. Teams can ingest, classify, share, and govern critical records with full history and policy-aligned permissions."
       },
       "admins": {
-        "title": "Built for admins",
-        "description": "Admins can oversee users, monitor activity, manage notifications, and allocate storage plans. This gives clear control over usage and keeps teams aligned with operational policies."
+        "title": "Designed for administrators",
+        "description": "Administrators monitor user access, operational activity, and storage allocation from one control layer, ensuring compliance, visibility, and governance at scale."
       },
       "users": {
-        "title": "Built for users",
-        "description": "Users get a focused interface for storing and retrieving documents quickly, with useful features like search, previews, sharing, and profile personalization."
+        "title": "Built for business users",
+        "description": "Users benefit from a focused workspace for rapid upload, precise search, secure sharing, and profile personalization without operational complexity."
+      }
+    },
+    "features": {
+      "eyebrow": "Latest capabilities",
+      "title": "A unified operating layer for document teams",
+      "description": "GravySyncro now combines collaboration, administration, and account controls into a single trusted environment for enterprise operations.",
+      "cards": {
+        "messaging": {
+          "title": "Support Messaging",
+          "description": "Submit support requests, track lifecycle status, and receive administrator responses directly within the platform."
+        },
+        "versioning": {
+          "title": "Version History",
+          "description": "Preserve a complete document timeline, review historical versions, and maintain full edit accountability."
+        },
+        "admin": {
+          "title": "Admin Control Center",
+          "description": "Supervise users, tenants, notifications, and activity logs through a consolidated operational dashboard."
+        },
+        "profile": {
+          "title": "Profile and Security",
+          "description": "Manage identity details, organization context, and credential security from a dedicated profile workspace."
+        },
+        "billing": {
+          "title": "Billing and Plans",
+          "description": "Control subscriptions, storage tiers, and account-level billing visibility for predictable scaling."
+        },
+        "workspace": {
+          "title": "Structured Workspaces",
+          "description": "Organize teams and files with searchable grids, structured grouping, and faster context-based navigation."
+        }
+      }
+    },
+    "workflow": {
+      "eyebrow": "Operational flow",
+      "title": "Built for reliable daily execution",
+      "description": "A clear workflow keeps teams productive while preserving control, traceability, and security at every stage.",
+      "steps": {
+        "one": "Provision tenant-ready workspaces, onboard members, and enforce role-based access from day one.",
+        "two": "Upload, share, and collaborate on documents with comments, version tracking, and real-time notifications.",
+        "three": "Use administrative insights, audit logs, and billing controls to sustain governance as adoption grows."
+      }
+    },
+    "stats": {
+      "items": {
+        "one": {
+          "value": "24/7",
+          "label": "System visibility"
+        },
+        "two": {
+          "value": "Role-based",
+          "label": "Access controls"
+        },
+        "three": {
+          "value": "Real-time",
+          "label": "Alerts and updates"
+        }
       }
     },
     "contact": {
       "eyebrow": "Contact",
-      "title": "Ready to onboard your team?",
-      "description": "Reach out to us and we will help you set up GravySyncro for your workflow.",
+      "title": "Ready to deploy GravySyncro across your team?",
+      "description": "Connect with us to plan your rollout, align security requirements, and launch with confidence.",
       "cards": {
         "email": {
           "title": "Email"

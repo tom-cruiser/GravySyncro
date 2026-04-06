@@ -44,6 +44,13 @@ const notificationsSlice = createSlice({
       state.inbox = action.payload;
       state.unreadCount = action.payload.filter(n => !n.read).length;
     },
+    prependNotification: (state, action) => {
+      const notification = action.payload;
+      state.inbox = [notification, ...state.inbox.filter((item) => item.id !== notification.id)].slice(0, 50);
+      if (!notification.read) {
+        state.unreadCount += 1;
+      }
+    },
     setUnreadCount: (state, action) => {
       state.unreadCount = Math.max(0, Number(action.payload) || 0);
     },
@@ -57,6 +64,7 @@ export const {
   markAllAsRead,
   deleteNotification,
   setNotifications,
+  prependNotification,
   setUnreadCount,
 } = notificationsSlice.actions;
 

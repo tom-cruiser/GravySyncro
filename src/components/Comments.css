@@ -5,9 +5,16 @@
   box-shadow: var(--shadow);
 }
 
+.comments-sidebar {
+  padding: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
 .comments-header {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 24px;
   color: var(--gray-800);
@@ -41,6 +48,44 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+.comment-thread-node {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.comment-thread-replies {
+  margin-left: 2rem;
+  padding-left: 1rem;
+  border-left: 2px solid var(--gray-200);
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.reply-box {
+  margin-left: 3.25rem;
+  padding: 0.8rem;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  background: var(--gray-50);
+}
+
+.reply-box textarea {
+  width: 100%;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  padding: 0.7rem 0.8rem;
+  resize: vertical;
+  margin-bottom: 0.6rem;
+}
+
+.reply-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
 }
 
 .no-comments {
@@ -127,4 +172,98 @@
 .edit-actions {
   display: flex;
   gap: 8px;
+}
+
+.comments-header .close-btn {
+  margin-left: auto;
+}
+
+.comments-preview-btn {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  padding: 0.35rem 0.65rem;
+}
+
+.comments-preview-btn + .close-btn {
+  margin-left: 0.45rem;
+}
+
+@media (max-width: 768px) {
+  .comments-section {
+    padding: 14px;
+  }
+
+  .comments-header {
+    gap: 0.5rem;
+    margin-bottom: 14px;
+  }
+
+  .comments-header h3 {
+    font-size: 1rem;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .add-comment {
+    margin-bottom: 18px;
+  }
+
+  .comment-item {
+    gap: 9px;
+  }
+
+  .comment-avatar {
+    width: 34px;
+    height: 34px;
+    font-size: 14px;
+  }
+
+  .comment-thread-replies {
+    margin-left: 1.2rem;
+    padding-left: 0.75rem;
+  }
+
+  .reply-box {
+    margin-left: 0;
+  }
+
+  .comment-header {
+    align-items: flex-start;
+    gap: 0.35rem;
+  }
+
+  .comment-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .reply-actions,
+  .edit-actions {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 480px) {
+  .comments-header {
+    align-items: flex-start;
+  }
+
+  .comments-preview-btn {
+    margin-left: 0;
+    order: 3;
+  }
+
+  .comments-header .close-btn {
+    margin-left: 0;
+  }
+
+  .reply-actions .btn-primary,
+  .reply-actions .btn-secondary,
+  .edit-actions .btn-primary,
+  .edit-actions .btn-secondary {
+    width: 100%;
+  }
 }

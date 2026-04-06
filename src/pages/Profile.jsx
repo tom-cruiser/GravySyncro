@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 import { User, Mail, Briefcase, Lock, Save, Shield, CheckCircle, XCircle, Copy } from 'lucide-react';
-import { updateProfile } from '../features/auth/authSlice';
+import { io } from 'socket.io-client';
+import { setAuthUser, updateProfile } from '../features/auth/authSlice';
 import axios from 'axios';
 import api from '../config/api';
 import './Profile.css';
@@ -11,6 +12,7 @@ const Profile = () => {
   const { t } = useTranslation();
   const dispatch = useDispatch();
   const { user, token } = useSelector(state => state.auth);
+  const [liveProfile, setLiveProfile] = useState(user || null);
   
   const [formData, setFormData] = useState({
     firstName: '',
@@ -26,18 +28,83 @@ const Profile = () => {
   const [message, setMessage] = useState({ type: '', text: '' });
   const [isLoading, setIsLoading] = useState(false);
 
+  const profileUser = liveProfile || user;
+  const currentPlanGb = Number(profileUser?.storagePlanGb || 0) || 50;
+  const currentStorageLimitGb = Number(profileUser?.storageLimit || 0) > 0
+    ? Math.round(Number(profileUser.storageLimit) / (1024 * 1024 * 1024))
+    : currentPlanGb;
+  const currentSubscriptionLabel = profileUser?.subscription?.plan
+    ? String(profileUser.subscription.plan)
+    : 'enterprise';
+
+  const refreshProfile = useCallback(async () => {
+    if (!token) return;
+
+    try {
+      const response = await axios.get(api.endpoints.users.profile(), {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const nextProfile = response?.data?.data?.user;
+      if (!nextProfile) return;
+
+      setLiveProfile(nextProfile);
+      dispatch(setAuthUser(nextProfile));
+    } catch (error) {
+      console.error('Profile refresh error:', error);
+    }
+  }, [dispatch, token]);
+
+  useEffect(() => {
+    setLiveProfile(user || null);
+  }, [user]);
+
+  useEffect(() => {
+    refreshProfile();
+  }, [refreshProfile]);
+
+  useEffect(() => {
+    if (!token) return undefined;
+
+    const socketBaseUrl = (import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL || '').replace(/\/api\/v1\/?$/, '');
+    const socket = io(socketBaseUrl || window.location.origin, {
+      transports: ['websocket'],
+      withCredentials: true,
+    });
+
+    socket.on('connect', () => {
+      socket.emit('authenticate', { token });
+    });
+
+    socket.on('tenant:storage-updated', () => {
+      refreshProfile();
+    });
+
+    socket.on('authenticated', ({ ok }) => {
+      if (!ok) {
+        socket.disconnect();
+      }
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [refreshProfile, token]);
+
   // Load user data when component mounts or user changes
   useEffect(() => {
-    if (user) {
+    if (profileUser) {
       setFormData(prev => ({
         ...prev,
-        firstName: user.firstName || '',
-        lastName: user.lastName || '',
-        phone: user.phone || '',
-        organization: user.organization || '',
+        firstName: profileUser.firstName || '',
+        lastName: profileUser.lastName || '',
+        phone: profileUser.phone || '',
+        organization: profileUser.organization || '',
       }));
     }
-  }, [user]);
+  }, [profileUser]);
 
   const handleChange = (e) => {
     setFormData({
@@ -52,10 +119,10 @@ const Profile = () => {
   };
 
   const handleCopyTenantId = async () => {
-    if (!user?.tenantId) return;
+    if (!profileUser?.tenantId) return;
 
     try {
-      await navigator.clipboard.writeText(user.tenantId);
+      await navigator.clipboard.writeText(profileUser.tenantId);
       showMessage('success', t('profile.organizationCodeCopied'));
     } catch (error) {
       showMessage('error', t('profile.organizationCodeCopyError'));
@@ -83,7 +150,13 @@ const Profile = () => {
       );
 
       // Update Redux state
-      dispatch(updateProfile(response.data.data.user));
+      const updatedProfile = response.data.data.user;
+      dispatch(updateProfile(updatedProfile));
+      setLiveProfile((current) => ({
+        ...(current || {}),
+        ...updatedProfile,
+      }));
+      await refreshProfile();
       showMessage('success', t('profile.profileUpdated'));
     } catch (error) {
       console.error('Profile update error:', error);
@@ -190,8 +263,8 @@ const Profile = () => {
                 </div>
                 <div className="avatar-info">
                   <h3>{formData.firstName} {formData.lastName}</h3>
-                  <p>{user?.email}</p>
-                  <span className="role-badge">{user?.role}</span>
+                  <p>{profileUser?.email}</p>
+                  <span className="role-badge">{profileUser?.role}</span>
                 </div>
               </div>
 
@@ -234,7 +307,7 @@ const Profile = () => {
                 </label>
                 <input
                   type="email"
-                  value={user?.email || ''}
+                  value={profileUser?.email || ''}
                   disabled
                   className="disabled-input"
                 />
@@ -276,12 +349,12 @@ const Profile = () => {
               <div className="user-info-box">
                 <div className="info-item">
                   <span className="info-label">Role:</span>
-                  <span className="info-value">{user?.role}</span>
+                  <span className="info-value">{profileUser?.role}</span>
                 </div>
                 <div className="info-item">
                   <span className="info-label">Account Status:</span>
                   <span className="info-value">
-                    {user?.isVerified ? (
+                    {profileUser?.isVerified ? (
                       <span className="status-verified"><CheckCircle size={14} /> Verified</span>
                     ) : (
                       <span className="status-unverified"><XCircle size={14} /> Unverified</span>
@@ -290,13 +363,25 @@ const Profile = () => {
                 </div>
                 <div className="info-item">
                   <span className="info-label">Member Since:</span>
-                  <span className="info-value">{new Date(user?.createdAt).toLocaleDateString()}</span>
+                  <span className="info-value">{profileUser?.createdAt ? new Date(profileUser.createdAt).toLocaleDateString() : '-'}</span>
+                </div>
+                <div className="info-item">
+                  <span className="info-label">Subscription:</span>
+                  <span className="info-value">{currentSubscriptionLabel}</span>
+                </div>
+                <div className="info-item">
+                  <span className="info-label">Current Plan:</span>
+                  <span className="info-value">{currentPlanGb} GB Enterprise Plan</span>
+                </div>
+                <div className="info-item">
+                  <span className="info-label">Storage Capacity:</span>
+                  <span className="info-value">{currentStorageLimitGb} GB</span>
                 </div>
                 <div className="info-item">
                   <span className="info-label">{t('profile.organizationCode')}:</span>
                   <span className="info-value info-value-code">
-                    <span>{user?.tenantId || '-'}</span>
-                    {!!user?.tenantId && (
+                    <span>{profileUser?.tenantId || '-'}</span>
+                    {!!profileUser?.tenantId && (
                       <button type="button" className="copy-org-btn" onClick={handleCopyTenantId}>
                         <Copy size={14} />
                         {t('profile.copyOrganizationCode')}
@@ -382,14 +467,14 @@ const Profile = () => {
                   </div>
                 </div>
                 <div className="security-status">
-                  {user?.twoFactorEnabled ? (
+                  {profileUser?.twoFactorEnabled ? (
                     <span className="status-enabled"><CheckCircle size={16} /> Enabled</span>
                   ) : (
                     <span className="status-disabled"><XCircle size={16} /> Disabled</span>
                   )}
                 </div>
                 <button type="button" className="btn-secondary" disabled>
-                  {user?.twoFactorEnabled ? 'Manage 2FA' : 'Enable 2FA'}
+                  {profileUser?.twoFactorEnabled ? 'Manage 2FA' : 'Enable 2FA'}
                   <span style={{ marginLeft: '8px', fontSize: '12px' }}>(Coming Soon)</span>
                 </button>
               </div>

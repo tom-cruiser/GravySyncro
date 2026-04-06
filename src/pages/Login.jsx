@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Eye, EyeOff, Mail, Lock, ShieldCheck, AlertCircle, Loader2 } from 'lucide-react';
+import { Mail, Lock, ShieldCheck, AlertCircle, Loader2 } from 'lucide-react';
 import { loginStart, loginSuccess, loginFailure, requireTwoFactor, clearError } from '../features/auth/authSlice';
 import LanguageSelector from '../components/LanguageSelector';
 import api from '../config/api';
@@ -14,17 +14,25 @@ const Login = () => {
   const [password, setPassword]         = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [twoFactorCode, setTwoFactorCode] = useState('');
+  const [capsLockOn, setCapsLockOn] = useState(false);
 
   const dispatch  = useDispatch();
   const navigate  = useNavigate();
   const { isLoading, error, twoFactorRequired } = useSelector(state => state.auth);
+  const loginReady = twoFactorRequired
+    ? twoFactorCode.length === 6
+    : email.trim().length > 3 && password.length > 0;
+
+  const handlePasswordKeyState = (e) => {
+    setCapsLockOn(e.getModifierState && e.getModifierState('CapsLock'));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     dispatch(loginStart());
 
     try {
-      const body = { email, password };
+      const body = { email: email.trim(), password };
       if (twoFactorRequired && twoFactorCode) body.twoFactorCode = twoFactorCode;
 
       const response = await fetch(api.endpoints.auth.login(), {
@@ -71,7 +79,7 @@ const Login = () => {
         <div className="auth-header">
           <div className="auth-header-top">
             <div className="auth-brand">
-              <img src="/gravysyncro.jpg" alt="GravySyncro" className="auth-logo" />
+              <img src="/gravysyncrologo.png" alt="GravySyncro" className="auth-logo" />
               <h1>GravySyncro</h1>
             </div>
             <LanguageSelector />
@@ -130,13 +138,16 @@ const Login = () => {
                     {t('auth.forgotPassword')}
                   </Link>
                 </div>
-                <div className="input-wrapper">
+                <div className="input-wrapper has-action">
                   <Lock size={16} className="input-icon" />
                   <input
                     type={showPassword ? 'text' : 'password'}
                     id="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    onKeyUp={handlePasswordKeyState}
+                    onKeyDown={handlePasswordKeyState}
+                    onBlur={() => setCapsLockOn(false)}
                     required
                     placeholder="••••••••"
                     autoComplete="current-password"
@@ -148,9 +159,12 @@ const Login = () => {
                     onClick={() => setShowPassword(v => !v)}
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    {showPassword ? 'Hide' : 'Show'}
                   </button>
                 </div>
+                {capsLockOn && (
+                  <small className="text-warning">Caps Lock is on.</small>
+                )}
               </div>
             </>
           )}
@@ -177,7 +191,7 @@ const Login = () => {
             </div>
           )}
 
-          <button type="submit" className="btn-primary" disabled={isLoading}>
+          <button type="submit" className="btn-primary" disabled={isLoading || !loginReady}>
             {isLoading
               ? <><Loader2 size={16} className="spin" /> {t('auth.signingIn')}</>
               : twoFactorRequired ? 'Verify Code' : t('auth.signIn')

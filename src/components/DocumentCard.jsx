@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { FileText, Download, Share2, MoreVertical, Lock, Trash2, Edit, Eye } from 'lucide-react';
+import { FileArchive, FileImage, FileSpreadsheet, FileText, FileType2, Download, Share2, MoreVertical, Lock, Trash2, Eye } from 'lucide-react';
 import './DocumentCard.css';
 
 const DocumentCard = ({ document: doc, onDownload, onShare, onDelete, onView }) => {
@@ -23,6 +23,12 @@ const DocumentCard = ({ document: doc, onDownload, onShare, onDelete, onView }) 
   }, []);
 
   const getFileIcon = (type) => {
+    const normalizedType = String(type || '').toUpperCase();
+    if (normalizedType === 'PDF') return <FileType2 size={24} />;
+    if (['DOC', 'DOCX'].includes(normalizedType)) return <FileText size={24} />;
+    if (['XLS', 'XLSX', 'CSV'].includes(normalizedType)) return <FileSpreadsheet size={24} />;
+    if (['JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'SVG'].includes(normalizedType)) return <FileImage size={24} />;
+    if (['ZIP', 'RAR', '7Z', 'TAR', 'GZ'].includes(normalizedType)) return <FileArchive size={24} />;
     return <FileText size={24} />;
   };
 
