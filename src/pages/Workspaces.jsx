@@ -121,8 +121,49 @@ const Workspaces = () => {
   }, [token]);
 
   const normalizedRole = normalizeWorkspaceRole(user?.role);
-  const canManage = ['Enterprise Admin', 'Workspace Manager'].includes(normalizedRole);
   const canCreateWorkspace = Boolean(user?.tenantId);
+  const canAccessWorkspace = (workspace) => {
+    if (!workspace) return false;
+    if (normalizedRole === 'Enterprise Admin') return true;
+
+    const currentUserId = String(user?._id || '');
+    if (!currentUserId) return false;
+
+    const managerId = String(workspace.manager?._id || workspace.manager || '');
+    if (managerId && managerId === currentUserId) return true;
+
+    const isMember = (workspace.members || []).some((entry) => String(entry.user?._id || entry.user || '') === currentUserId);
+    const isGuest = (workspace.guests || []).some((entry) => String(entry.user?._id || entry.user || '') === currentUserId);
+    return isMember || isGuest;
+  };
+
+  const canManageWorkspace = (workspace) => {
+    if (!workspace) return false;
+    if (normalizedRole === 'Enterprise Admin') return true;
+
+    const currentUserId = String(user?._id || '');
+    if (!currentUserId) return false;
+
+    const managerId = String(workspace.manager?._id || workspace.manager || '');
+    if (managerId && managerId === currentUserId) return true;
+
+    const creatorId = String(workspace.createdBy?._id || workspace.createdBy || '');
+    return Boolean(creatorId && creatorId === currentUserId);
+  };
+
+  const canInviteWorkspaceMembers = (workspace) => {
+    if (!workspace) return false;
+    if (normalizedRole === 'Enterprise Admin') return true;
+
+    const currentUserId = String(user?._id || '');
+    if (!currentUserId) return false;
+
+    if (canManageWorkspace(workspace)) return true;
+
+    return (workspace.members || []).some(
+      (entry) => String(entry.user?._id || entry.user || '') === currentUserId,
+    );
+  };
 
   const workspaceLabel = terminology.workspaceLabel || 'Workspaces';
   const singularWorkspaceLabel = workspaceLabel.endsWith('s') ? workspaceLabel.slice(0, -1) : workspaceLabel;
@@ -375,7 +416,9 @@ const Workspaces = () => {
       <WorkspaceGrid
         token={token}
         workspaceLabel={workspaceLabel}
-        canManage={canManage}
+        canManage={canManageWorkspace}
+        canInvite={canInviteWorkspaceMembers}
+        canAccessSettings={canAccessWorkspace}
         canCreate={canCreateWorkspace}
         refreshSignal={refreshSignal}
         onCreate={() => setShowCreateModal(true)}
@@ -450,39 +493,43 @@ const Workspaces = () => {
               <button type="button" className="close-btn" onClick={() => setShowTeamModal(false)}><X size={18} /></button>
             </div>
             <div className="workspace-modal-body team-modal-body">
-              <section className="workspace-card">
-                <h4><UserPlus size={16} /> Invite Internal</h4>
-                <input
-                  value={internalSearch}
-                  onChange={(event) => searchInternalUsers(event.target.value)}
-                  placeholder="Search users in your tenant"
-                />
-                <select value={inviteRole} onChange={(event) => setInviteRole(event.target.value)}>
-                  <option value="Contributor">Contributor</option>
-                  <option value="Guest">Guest</option>
-                </select>
-                <div className="candidate-list">
-                  {internalCandidates.map((candidate) => (
-                    <button key={candidate._id} type="button" className="candidate-row" onClick={() => addInternalMember(candidate)}>
-                      <span>{candidate.firstName} {candidate.lastName}</span>
-                      <small>{candidate.email}</small>
-                    </button>
-                  ))}
-                </div>
-              </section>
+              {canInviteWorkspaceMembers(selectedWorkspace) && (
+                <>
+                  <section className="workspace-card">
+                    <h4><UserPlus size={16} /> Invite Internal</h4>
+                    <input
+                      value={internalSearch}
+                      onChange={(event) => searchInternalUsers(event.target.value)}
+                      placeholder="Search users in your tenant"
+                    />
+                    <select value={inviteRole} onChange={(event) => setInviteRole(event.target.value)}>
+                      <option value="Contributor">Contributor</option>
+                      <option value="Guest">Guest</option>
+                    </select>
+                    <div className="candidate-list">
+                      {internalCandidates.map((candidate) => (
+                        <button key={candidate._id} type="button" className="candidate-row" onClick={() => addInternalMember(candidate)}>
+                          <span>{candidate.firstName} {candidate.lastName}</span>
+                          <small>{candidate.email}</small>
+                        </button>
+                      ))}
+                    </div>
+                  </section>
 
-              <section className="workspace-card">
-                <h4><Mail size={16} /> Invite External Guest</h4>
-                <input
-                  type="email"
-                  value={guestEmail}
-                  onChange={(event) => setGuestEmail(event.target.value)}
-                  placeholder="guest@example.com"
-                />
-                <button className="primary-btn" onClick={addGuestMember} disabled={!guestEmail.trim()}>
-                  Send Invite
-                </button>
-              </section>
+                  <section className="workspace-card">
+                    <h4><Mail size={16} /> Invite External Guest</h4>
+                    <input
+                      type="email"
+                      value={guestEmail}
+                      onChange={(event) => setGuestEmail(event.target.value)}
+                      placeholder="guest@example.com"
+                    />
+                    <button className="primary-btn" onClick={addGuestMember} disabled={!guestEmail.trim()}>
+                      Send Invite
+                    </button>
+                  </section>
+                </>
+              )}
 
               <section className="workspace-card team-list-card">
                 <h4><Shield size={16} /> Members & Guests</h4>
@@ -502,7 +549,7 @@ const Workspaces = () => {
                             <small>{member.role}</small>
                           </div>
                           <div className="workspace-actions">
-                            {!isManager && (
+                            {!isManager && canManageWorkspace(selectedWorkspace) && (
                               <>
                                 <select
                                   value={member.role === 'Guest' ? 'Guest' : 'Contributor'}
@@ -549,15 +596,21 @@ const Workspaces = () => {
               </div>
             </div>
             <div className="workspace-modal-footer">
-              <button className="secondary-btn" onClick={() => toggleArchive(selectedWorkspace)}>
-                <Lock size={15} /> Archive Project
-              </button>
-              <button className="secondary-btn" onClick={() => toggleRework(selectedWorkspace)}>
-                <RotateCcw size={15} /> {selectedWorkspace.reworkEnabled ? 'Disable Rework' : 'Allow Rework'}
-              </button>
-              <button className="secondary-btn workspace-delete-btn" onClick={() => handleDeleteWorkspace(selectedWorkspace)}>
-                Delete Workspace
-              </button>
+              {canManageWorkspace(selectedWorkspace) ? (
+                <>
+                  <button className="secondary-btn" onClick={() => toggleArchive(selectedWorkspace)}>
+                    <Lock size={15} /> Archive Project
+                  </button>
+                  <button className="secondary-btn" onClick={() => toggleRework(selectedWorkspace)}>
+                    <RotateCcw size={15} /> {selectedWorkspace.reworkEnabled ? 'Disable Rework' : 'Allow Rework'}
+                  </button>
+                  <button className="secondary-btn workspace-delete-btn" onClick={() => handleDeleteWorkspace(selectedWorkspace)}>
+                    Delete Workspace
+                  </button>
+                </>
+              ) : (
+                <small>You have read-only settings access for this workspace.</small>
+              )}
             </div>
           </div>
         </div>

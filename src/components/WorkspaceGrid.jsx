@@ -8,6 +8,8 @@ const WorkspaceGrid = ({
   token,
   workspaceLabel = 'Workspaces',
   canManage = false,
+  canInvite = false,
+  canAccessSettings = false,
   canCreate = false,
   refreshSignal = 0,
   onOpenWorkspace,
@@ -88,6 +90,27 @@ const WorkspaceGrid = ({
   }, [workspaces, search, statusFilter, sortBy]);
 
   const singularLabel = workspaceLabel.endsWith('s') ? workspaceLabel.slice(0, -1) : workspaceLabel;
+
+  const canManageWorkspace = (workspace) => {
+    if (typeof canManage === 'function') {
+      return Boolean(canManage(workspace));
+    }
+    return Boolean(canManage);
+  };
+
+  const canInviteToWorkspace = (workspace) => {
+    if (typeof canInvite === 'function') {
+      return Boolean(canInvite(workspace));
+    }
+    return Boolean(canInvite);
+  };
+
+  const canOpenWorkspaceSettings = (workspace) => {
+    if (typeof canAccessSettings === 'function') {
+      return Boolean(canAccessSettings(workspace));
+    }
+    return Boolean(canAccessSettings);
+  };
 
   const formatLastActivity = (workspace) => {
     const value = workspace.updatedAt || workspace.createdAt;
@@ -181,6 +204,9 @@ const WorkspaceGrid = ({
           {filteredSortedWorkspaces.map((workspace) => {
             const isArchived = workspace.status === 'archived';
             const isLocked = isArchived && !workspace.reworkEnabled;
+            const canManageThisWorkspace = canManageWorkspace(workspace);
+            const canInviteThisWorkspace = canInviteToWorkspace(workspace);
+            const canAccessSettingsThisWorkspace = canOpenWorkspaceSettings(workspace);
             return (
               <article
                 key={workspace._id}
@@ -214,14 +240,22 @@ const WorkspaceGrid = ({
                   <button type="button" className="primary-btn workspace-open-btn" onClick={() => onOpenWorkspace?.(workspace)}>
                     Open
                   </button>
-                  {canManage && (
+                  {canInviteThisWorkspace && (
                     <>
                     <button type="button" className="secondary-btn" onClick={() => onOpenTeam?.(workspace)}>
                       <Users size={14} /> Manage Team
                     </button>
+                    </>
+                  )}
+                  {canAccessSettingsThisWorkspace && (
+                    <>
                     <button type="button" className="secondary-btn" onClick={() => onOpenSettings?.(workspace)}>
                       <Settings2 size={14} /> Settings
                     </button>
+                    </>
+                  )}
+                  {canManageThisWorkspace && (
+                    <>
                     <button type="button" className="secondary-btn workspace-delete-btn" onClick={() => onDeleteWorkspace?.(workspace)}>
                       <Trash2 size={14} /> Delete
                     </button>
