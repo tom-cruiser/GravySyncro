@@ -153,6 +153,14 @@ const Documents = () => {
   const routeWorkspaceId = searchParams.get('workspaceId') || '';
   const activeWorkspaceId = selectedWorkspaceId || routeWorkspaceId;
 
+  useEffect(() => {
+    if (!showVideoModal) return;
+    setVideoMetadata((prev) => {
+      if (prev.workspaceId) return prev;
+      return { ...prev, workspaceId: activeWorkspaceId || '' };
+    });
+  }, [showVideoModal, activeWorkspaceId]);
+
   // ── Helpers ──────────────────────────────────────────────────────────────
   const authHeaders = () => ({ Authorization: `Bearer ${token}` });
 
@@ -717,7 +725,7 @@ const Documents = () => {
     }
 
     const batch = queued.slice(0, slots);
-    const meta = { ...videoMetadata, workspaceId: activeWorkspaceId || '' };
+    const meta = { ...videoMetadata, workspaceId: videoMetadata.workspaceId || activeWorkspaceId || '' };
 
     batch.forEach(entry => {
       videoUploadQueue.current.push(entry.id);
@@ -730,7 +738,7 @@ const Documents = () => {
   const handleResumeVideo = (entry) => {
     if (![UPLOAD_STATUS.ERROR, UPLOAD_STATUS.ABORTED].includes(entry.status)) return;
     updateUploadState(entry.id, { status: UPLOAD_STATUS.QUEUED, error: null, progress: 0 });
-    const meta = { ...videoMetadata, workspaceId: activeWorkspaceId || '' };
+    const meta = { ...videoMetadata, workspaceId: videoMetadata.workspaceId || activeWorkspaceId || '' };
     videoUploadQueue.current.push(entry.id);
     uploadOneVideo({ ...entry, status: UPLOAD_STATUS.QUEUED, error: null }, meta).then(() => fetchVideos(videoPage));
   };
@@ -770,7 +778,7 @@ const Documents = () => {
     } catch (e) { alert(e.response?.data?.message || e.message || 'Download failed'); }
   };
 
-  const handleView = async (doc) => {
+  const openDocumentConversation = (doc) => {
     const id = String(doc?.id || doc?._id || '');
     if (!id) return;
 
@@ -782,6 +790,19 @@ const Documents = () => {
     setSearchParams(nextParams, { replace: false });
     setSidebarDocument(doc);
     setSidebarLoading(false);
+  };
+
+  const handleView = async (doc) => {
+    const id = String(doc?.id || doc?._id || '');
+    if (!id) return;
+
+    if (canPreviewInLightbox(doc)) {
+      setActivePreviewId(id);
+      setLightboxOpen(true);
+      return;
+    }
+
+    openDocumentConversation(doc);
   };
 
   const handleShare = (doc) => { setShareTargetDocument(doc); setShowShareModal(true); };
@@ -989,10 +1010,18 @@ const Documents = () => {
               onDelete={handleDelete}
               onDeleteFolder={handleDeleteFolder}
               onView={handleView}
+              onConversation={openDocumentConversation}
               rootLabel={currentWorkspace?.name || 'Workspace'}
             />
           ) : (
-            <DocumentList documents={documents} onDownload={handleDownload} onShare={handleShare} onDelete={handleDelete} onView={handleView} />
+            <DocumentList
+              documents={documents}
+              onDownload={handleDownload}
+              onShare={handleShare}
+              onDelete={handleDelete}
+              onView={handleView}
+              onConversation={openDocumentConversation}
+            />
           )}
 
           <div className="documents-pagination">
@@ -1168,7 +1197,10 @@ const Documents = () => {
               <div className="metadata-form">
                 <div className="form-group">
                   <label>Workspace</label>
-                  <select value={selectedWorkspaceId} onChange={(e) => setSelectedWorkspaceId(e.target.value)}>
+                  <select
+                    value={videoMetadata.workspaceId}
+                    onChange={(e) => setVideoMetadata((prev) => ({ ...prev, workspaceId: e.target.value }))}
+                  >
                     <option value="">No workspace</option>
                     {workspaces.map((workspace) => (
                       <option key={workspace._id} value={workspace._id}>
@@ -1410,7 +1442,7 @@ const Documents = () => {
       )}
 
       <DocumentLightbox
-        isOpen={lightboxOpen && !!sidebarDocument}
+        isOpen={lightboxOpen && !!activePreviewId}
         token={token}
         mediaItems={mediaPreviewItems}
         activeDocumentId={activePreviewId}

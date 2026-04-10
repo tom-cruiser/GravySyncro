@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { FileArchive, FileImage, FileSpreadsheet, FileText, FileType2, Download, Share2, MoreVertical, Lock, Trash2, Eye } from 'lucide-react';
+import { FileArchive, FileImage, FileSpreadsheet, FileText, FileType2, Download, Share2, MoreVertical, Lock, Trash2, Eye, MessageCircle } from 'lucide-react';
 import './DocumentCard.css';
 
-const DocumentCard = ({ document: doc, onDownload, onShare, onDelete, onView }) => {
+const DocumentCard = ({ document: doc, onDownload, onShare, onDelete, onView, onConversation }) => {
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef(null);
 
@@ -56,8 +56,17 @@ const DocumentCard = ({ document: doc, onDownload, onShare, onDelete, onView }) 
     action();
   };
 
+  const handleCardClick = () => {
+    onView?.(doc);
+  };
+
+  const handleIconAction = (event, action) => {
+    event.stopPropagation();
+    action?.(doc);
+  };
+
   return (
-    <div className="document-card">
+    <div className="document-card" onClick={handleCardClick}>
       <div className="document-card-header">
         <div className="document-icon" style={{ backgroundColor: `${getTypeColor(doc.type)}20`, color: getTypeColor(doc.type) }}>
           {getFileIcon(doc.type)}
@@ -71,6 +80,11 @@ const DocumentCard = ({ document: doc, onDownload, onShare, onDelete, onView }) 
               <button onClick={() => handleAction(() => onView?.(doc))}>
                 <Eye size={16} /> View
               </button>
+              {onConversation && (
+                <button onClick={() => handleAction(() => onConversation?.(doc))}>
+                  <MessageCircle size={16} /> Conversation
+                </button>
+              )}
               <button onClick={() => handleAction(() => onDownload?.(doc))}>
                 <Download size={16} /> Download
               </button>
@@ -97,10 +111,18 @@ const DocumentCard = ({ document: doc, onDownload, onShare, onDelete, onView }) 
       </div>
 
       <div className="document-card-footer">
-        <button className="icon-btn" title="Download" onClick={() => onDownload?.(doc)}>
+        <button className="icon-btn" title="View" onClick={(event) => handleIconAction(event, onView)}>
+          <Eye size={18} />
+        </button>
+        {onConversation && (
+          <button className="icon-btn" title="Conversation" onClick={(event) => handleIconAction(event, onConversation)}>
+            <MessageCircle size={18} />
+          </button>
+        )}
+        <button className="icon-btn" title="Download" onClick={(event) => handleIconAction(event, onDownload)}>
           <Download size={18} />
         </button>
-        <button className="icon-btn" title="Share" onClick={() => onShare?.(doc)}>
+        <button className="icon-btn" title="Share" onClick={(event) => handleIconAction(event, onShare)}>
           <Share2 size={18} />
         </button>
         {doc.encrypted && (

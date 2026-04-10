@@ -2,7 +2,7 @@ import React from 'react';
 import DocumentCard from './DocumentCard';
 import './DocumentList.css';
 
-const DocumentList = ({ documents, onDownload, onShare, onDelete, onView }) => {
+const DocumentList = ({ documents, onDownload, onShare, onDelete, onView, onConversation }) => {
   if (!documents || documents.length === 0) {
     return (
       <div className="empty-state">
@@ -23,6 +23,7 @@ const DocumentList = ({ documents, onDownload, onShare, onDelete, onView }) => {
             onShare={onShare}
             onDelete={onDelete}
             onView={onView}
+            onConversation={onConversation}
           />
         ))}
       </div>
