@@ -142,7 +142,7 @@ const Documents = () => {
   // Video upload state
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [videoUploads, setVideoUploads] = useState([]); // array of mkVideoUploadState
-  const [videoMetadata, setVideoMetadata] = useState({ title: '', description: '', category: 'General' });
+  const [videoMetadata, setVideoMetadata] = useState({ title: '', description: '', category: 'General', workspaceId: '' });
   const [videos, setVideos] = useState([]);
   const [videoPage, setVideoPage] = useState(1);
   const [videoTotalPages, setVideoTotalPages] = useState(1);
@@ -214,7 +214,7 @@ const Documents = () => {
 
     const socketBaseUrl = (import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL || '').replace(/\/api\/v1\/?$/, '');
     const socket = io(socketBaseUrl || window.location.origin, {
-      transports: ['websocket'],
+      transports: ['websocket', 'polling'],
       withCredentials: true,
     });
 
@@ -423,13 +423,17 @@ const Documents = () => {
   useEffect(() => {
     if (!token || activeTab !== 'videos') return;
     fetchVideos(videoPage);
-  }, [token, videoPage, activeTab]);
+  }, [token, videoPage, activeTab, activeWorkspaceId]);
 
   const fetchVideos = async (page = videoPage) => {
     try {
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/videos`, {
         headers: authHeaders(),
-        params: { page, limit: 20 },
+        params: {
+          page,
+          limit: 20,
+          ...(activeWorkspaceId ? { workspaceId: activeWorkspaceId } : {}),
+        },
       });
       setVideos(res.data?.data?.videos || []);
       setVideoTotalPages(Math.max(1, res.data?.pages || 1));
@@ -615,6 +619,7 @@ const Documents = () => {
             title: meta.title || file.name.replace(/\.[^.]+$/, ''),
             description: meta.description || '',
             category: meta.category || 'General',
+            ...(meta.workspaceId ? { workspaceId: meta.workspaceId } : {}),
           },
           { headers: authHeaders(), signal: abort.signal },
         );
@@ -712,7 +717,7 @@ const Documents = () => {
     }
 
     const batch = queued.slice(0, slots);
-    const meta = { ...videoMetadata };
+    const meta = { ...videoMetadata, workspaceId: activeWorkspaceId || '' };
 
     batch.forEach(entry => {
       videoUploadQueue.current.push(entry.id);
@@ -725,7 +730,7 @@ const Documents = () => {
   const handleResumeVideo = (entry) => {
     if (![UPLOAD_STATUS.ERROR, UPLOAD_STATUS.ABORTED].includes(entry.status)) return;
     updateUploadState(entry.id, { status: UPLOAD_STATUS.QUEUED, error: null, progress: 0 });
-    const meta = { ...videoMetadata };
+    const meta = { ...videoMetadata, workspaceId: activeWorkspaceId || '' };
     videoUploadQueue.current.push(entry.id);
     uploadOneVideo({ ...entry, status: UPLOAD_STATUS.QUEUED, error: null }, meta).then(() => fetchVideos(videoPage));
   };
@@ -1231,6 +1236,17 @@ const Documents = () => {
 
               {/* Metadata */}
               <div className="metadata-form" style={{ marginTop: '1rem' }}>
+                <div className="form-group">
+                  <label>Workspace</label>
+                  <select value={selectedWorkspaceId} onChange={(e) => setSelectedWorkspaceId(e.target.value)}>
+                    <option value="">No workspace</option>
+                    {workspaces.map((workspace) => (
+                      <option key={workspace._id} value={workspace._id}>
+                        {workspace.name} {workspace.status === 'archived' ? '(Archived)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <div className="form-group">
                   <label>Title</label>
                   <input type="text" value={videoMetadata.title} onChange={e => setVideoMetadata(p => ({ ...p, title: e.target.value }))} placeholder="Video title (optional)" />
