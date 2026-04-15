@@ -778,8 +778,32 @@ const Documents = () => {
     } catch (e) { alert(e.response?.data?.message || e.message || 'Download failed'); }
   };
 
-  const openDocumentConversation = (doc) => {
-    const id = String(doc?.id || doc?._id || '');
+  const resolveDocumentActionPayload = (documentOrId, fallbackDocument = null) => {
+    if (documentOrId && typeof documentOrId === 'object') {
+      const id = String(documentOrId?.id || documentOrId?._id || '');
+      return {
+        id,
+        doc: id ? documentOrId : null,
+      };
+    }
+
+    const id = String(documentOrId || '');
+    if (!id) {
+      return { id: '', doc: null };
+    }
+
+    const matched = fallbackDocument
+      || documents.find((item) => String(item?.id || item?._id) === id)
+      || null;
+
+    return {
+      id,
+      doc: matched,
+    };
+  };
+
+  const openDocumentConversation = (documentOrId, fallbackDocument = null) => {
+    const { id, doc } = resolveDocumentActionPayload(documentOrId, fallbackDocument);
     if (!id) return;
 
     const nextParams = new URLSearchParams(searchParams);
@@ -789,20 +813,51 @@ const Documents = () => {
     }
     setSearchParams(nextParams, { replace: false });
     setSidebarDocument(doc);
-    setSidebarLoading(false);
+    setSidebarLoading(!doc);
   };
 
-  const handleView = async (doc) => {
-    const id = String(doc?.id || doc?._id || '');
+  const handleView = async (documentOrId, fallbackDocument = null) => {
+    const { id, doc } = resolveDocumentActionPayload(documentOrId, fallbackDocument);
     if (!id) return;
 
-    if (canPreviewInLightbox(doc)) {
+    let targetDoc = doc;
+    if (!targetDoc) {
+      try {
+        const response = await axios.get(api.endpoints.documents.byId(id), {
+          headers: authHeaders(),
+        });
+        targetDoc = mapDocument(response.data?.data?.document || {});
+      } catch (error) {
+        alert(error?.response?.data?.message || 'Unable to open document');
+        return;
+      }
+    }
+
+    if (targetDoc && canPreviewInLightbox(targetDoc)) {
       setActivePreviewId(id);
       setLightboxOpen(true);
       return;
     }
 
-    openDocumentConversation(doc);
+    try {
+      const blob = await fetchDocumentBlob(targetDoc, 'inline');
+      const objectUrl = window.URL.createObjectURL(blob);
+      const previewWindow = window.open(objectUrl, '_blank', 'noopener,noreferrer');
+
+      if (!previewWindow) {
+        const link = globalThis.document.createElement('a');
+        link.href = objectUrl;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.click();
+      }
+
+      window.setTimeout(() => {
+        window.URL.revokeObjectURL(objectUrl);
+      }, 60000);
+    } catch (error) {
+      alert(error?.response?.data?.message || error?.message || 'Unable to open document');
+    }
   };
 
   const handleShare = (doc) => { setShareTargetDocument(doc); setShowShareModal(true); };

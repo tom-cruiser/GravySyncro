@@ -13,6 +13,7 @@ import {
   FolderOpen,
   LayoutGrid,
   List,
+  MessageCircle,
   Share2,
   Trash2,
 } from 'lucide-react';
@@ -95,7 +96,7 @@ const iconForFile = (doc) => {
   return <FileText size={16} className="folder-file-icon file-generic" />;
 };
 
-const FolderBrowser = ({ documents, onView, onDownload, onShare, onDelete, onDeleteFolder, rootLabel = 'Root' }) => {
+const FolderBrowser = ({ documents, onView, onConversation, onDownload, onShare, onDelete, onDeleteFolder, rootLabel = 'Root' }) => {
   const tree = useMemo(() => buildTree(documents), [documents]);
   const [currentPath, setCurrentPath] = useState([]);
   const [viewMode, setViewMode] = useState('list');
@@ -113,6 +114,8 @@ const FolderBrowser = ({ documents, onView, onDownload, onShare, onDelete, onDel
   const openFolder = (folderName) => {
     setCurrentPath((prev) => [...prev, folderName]);
   };
+
+  const resolveDocumentId = (doc) => String(doc?.id || doc?._id || '');
 
   const goToPath = (path) => setCurrentPath(path);
   const goUp = () => setCurrentPath((prev) => prev.slice(0, -1));
@@ -195,7 +198,7 @@ const FolderBrowser = ({ documents, onView, onDownload, onShare, onDelete, onDel
                 <div
                   key={doc.id || doc._id}
                   className="folder-entry folder-entry-file"
-                  onClick={() => onView?.(doc)}
+                  onClick={() => onView?.(resolveDocumentId(doc), doc)}
                 >
                   <div className="folder-file-info">
                     {iconForFile(doc)}
@@ -205,7 +208,10 @@ const FolderBrowser = ({ documents, onView, onDownload, onShare, onDelete, onDel
                     </div>
                   </div>
                   <div className="folder-file-actions">
-                    <button onClick={(event) => { event.stopPropagation(); onView?.(doc); }} title="Open Conversation"><Eye size={14} /></button>
+                    <button onClick={(event) => { event.stopPropagation(); onView?.(resolveDocumentId(doc), doc); }} title="View Document"><Eye size={14} /></button>
+                    {onConversation && (
+                      <button onClick={(event) => { event.stopPropagation(); onConversation?.(resolveDocumentId(doc), doc); }} title="Open Conversation"><MessageCircle size={14} /></button>
+                    )}
                     <button onClick={(event) => { event.stopPropagation(); onDownload?.(doc); }} title="Download"><Download size={14} /></button>
                     <button onClick={(event) => { event.stopPropagation(); onShare?.(doc); }} title="Share"><Share2 size={14} /></button>
                     <button onClick={(event) => { event.stopPropagation(); onDelete?.(doc); }} title="Delete"><Trash2 size={14} /></button>

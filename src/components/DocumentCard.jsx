@@ -6,6 +6,8 @@ const DocumentCard = ({ document: doc, onDownload, onShare, onDelete, onView, on
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef(null);
 
+  const documentId = String(doc?.id || doc?._id || '');
+
   useEffect(() => {
     const browserDocument = globalThis.document;
     if (!browserDocument || typeof browserDocument.addEventListener !== 'function') {
@@ -57,12 +59,22 @@ const DocumentCard = ({ document: doc, onDownload, onShare, onDelete, onView, on
   };
 
   const handleCardClick = () => {
-    onView?.(doc);
+    onView?.(documentId, doc);
   };
 
   const handleIconAction = (event, action) => {
     event.stopPropagation();
     action?.(doc);
+  };
+
+  const handleViewIconClick = (event) => {
+    event.stopPropagation();
+    onView?.(documentId, doc);
+  };
+
+  const handleConversationIconClick = (event) => {
+    event.stopPropagation();
+    onConversation?.(documentId, doc);
   };
 
   return (
@@ -77,11 +89,11 @@ const DocumentCard = ({ document: doc, onDownload, onShare, onDelete, onView, on
           </button>
           {showMenu && (
             <div className="dropdown-menu">
-              <button onClick={() => handleAction(() => onView?.(doc))}>
+              <button onClick={() => handleAction(() => onView?.(documentId, doc))}>
                 <Eye size={16} /> View
               </button>
               {onConversation && (
-                <button onClick={() => handleAction(() => onConversation?.(doc))}>
+                <button onClick={() => handleAction(() => onConversation?.(documentId, doc))}>
                   <MessageCircle size={16} /> Conversation
                 </button>
               )}
@@ -111,11 +123,11 @@ const DocumentCard = ({ document: doc, onDownload, onShare, onDelete, onView, on
       </div>
 
       <div className="document-card-footer">
-        <button className="icon-btn" title="View" onClick={(event) => handleIconAction(event, onView)}>
+        <button className="icon-btn" title="View" onClick={handleViewIconClick}>
           <Eye size={18} />
         </button>
         {onConversation && (
-          <button className="icon-btn" title="Conversation" onClick={(event) => handleIconAction(event, onConversation)}>
+          <button className="icon-btn" title="Conversation" onClick={handleConversationIconClick}>
             <MessageCircle size={18} />
           </button>
         )}
