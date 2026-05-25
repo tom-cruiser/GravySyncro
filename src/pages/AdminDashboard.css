@@ -175,6 +175,27 @@
   margin-top: 16px;
 }
 
+.admin-report-controls {
+  margin-top: 12px;
+}
+
+.admin-report-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.admin-report-filter-group select {
+  min-width: 120px;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-card-bg);
+  color: var(--color-text);
+}
+
 .storage-info p {
   font-size: 16px;
   color: var(--color-text);

@@ -11,7 +11,9 @@ import {
   AlertCircle,
   Building2,
   HeartPulse,
-  MessageCircle
+  MessageCircle,
+  Download,
+  Filter,
 } from 'lucide-react';
 import axios from 'axios';
 import { useSelector } from 'react-redux';
@@ -31,6 +33,8 @@ const AdminDashboard = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
+  const [reportPeriod, setReportPeriod] = useState('month');
+  const [reportState, setReportState] = useState('all');
 
   // Handle navigation from notification
   useEffect(() => {
@@ -53,6 +57,31 @@ const AdminDashboard = () => {
       console.error('Error fetching stats:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleExportAssetReport = async () => {
+    try {
+      const response = await axios.get(api.endpoints.assets.reportExport(), {
+        headers: { Authorization: `Bearer ${token}` },
+        params: {
+          period: reportPeriod,
+          ...(reportState !== 'all' ? { state: reportState } : {}),
+        },
+        responseType: 'blob',
+      });
+
+      const blob = new Blob([response.data], { type: response.headers['content-type'] || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `tenant-asset-report-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error exporting asset report:', error);
     }
   };
 
@@ -202,6 +231,31 @@ const AdminDashboard = () => {
                     className="storage-fill" 
                     style={{ width: '35%' }}
                   />
+                </div>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={handleExportAssetReport}
+                  style={{ marginTop: '14px', display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+                >
+                  <Download size={16} />
+                  Export Asset Report
+                </button>
+                <div className="admin-report-controls">
+                  <div className="admin-report-filter-group">
+                    <Filter size={16} />
+                    <select value={reportPeriod} onChange={(event) => setReportPeriod(event.target.value)}>
+                      <option value="day">Daily</option>
+                      <option value="month">Monthly</option>
+                      <option value="year">Yearly</option>
+                    </select>
+                    <select value={reportState} onChange={(event) => setReportState(event.target.value)}>
+                      <option value="all">All states</option>
+                      {['STARTED', 'IN_PROGRESS', 'NEEDS_REVIEW', 'REJECTED', 'FINISHED', 'ARCHIVED'].map((state) => (
+                        <option key={state} value={state}>{state.replaceAll('_', ' ')}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
             </div>

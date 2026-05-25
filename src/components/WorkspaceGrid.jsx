@@ -29,6 +29,17 @@ const WorkspaceGrid = ({
 
   const authHeaders = { headers: { Authorization: `Bearer ${token}` } };
 
+  const getMemberCount = (workspace) => {
+    const members = workspace.members || [];
+    const guests = workspace.guests || [];
+    const set = new Set([
+      ...(members.map((entry) => entry.user?._id || entry.user || entry)),
+      ...(guests.map((entry) => entry.user?._id || entry.user || entry)),
+      workspace.manager?._id || workspace.manager,
+    ].map((item) => String(item || '')));
+    return set.has('') ? set.size - 1 : set.size;
+  };
+
   const loadWorkspaces = async () => {
     if (!token) return;
     setLoading(true);
@@ -116,17 +127,6 @@ const WorkspaceGrid = ({
     const value = workspace.updatedAt || workspace.createdAt;
     if (!value) return 'Unknown';
     return new Date(value).toLocaleDateString();
-  };
-
-  const getMemberCount = (workspace) => {
-    const members = workspace.members || [];
-    const guests = workspace.guests || [];
-    const set = new Set([
-      ...(members.map((entry) => entry.user?._id || entry.user || entry)),
-      ...(guests.map((entry) => entry.user?._id || entry.user || entry)),
-      workspace.manager?._id || workspace.manager,
-    ].map((item) => String(item || '')));
-    return set.has('') ? set.size - 1 : set.size;
   };
 
   return (

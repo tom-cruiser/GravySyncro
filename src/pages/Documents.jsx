@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useDropzone } from 'react-dropzone';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Upload, X, Film, FileText, RotateCcw, CheckCircle2, AlertCircle, MessageCircle } from 'lucide-react';
+import { Upload, X, Film, FileText, RotateCcw, CheckCircle2, AlertCircle, MessageCircle, BarChart3, Filter } from 'lucide-react';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 import api from '../config/api';
@@ -15,6 +15,7 @@ import {
   uploadDocumentSuccess,
   uploadDocumentFailure,
   deleteDocument,
+  updateDocument,
 } from '../features/documents/documentsSlice';
 import { addNotification } from '../features/notifications/notificationsSlice';
 import { logout } from '../features/auth/authSlice';
@@ -72,6 +73,8 @@ const VIDEO_ACCEPT_MIME = {
 };
 
 const DOCUMENT_TYPES = ['General', 'Contract', 'Legal', 'Academic', 'Financial', 'Personal'];
+const LIFECYCLE_STATES = ['STARTED', 'IN_PROGRESS', 'NEEDS_REVIEW', 'REJECTED', 'FINISHED', 'ARCHIVED'];
+const MANAGERIAL_ROLES = new Set(['Admin', 'Manager', 'Enterprise Admin', 'Workspace Manager']);
 
 // ─── SHA-256 helper (browser SubtleCrypto) ────────────────────────────────────
 const computeSHA256 = async (file) => {
@@ -79,6 +82,18 @@ const computeSHA256 = async (file) => {
   const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+};
+
+const formatLifecycleState = (value) => String(value || 'STARTED').replaceAll('_', ' ');
+
+const getLifecycleTone = (value) => {
+  const state = String(value || 'STARTED');
+  if (state === 'FINISHED') return 'success';
+  if (state === 'ARCHIVED') return 'muted';
+  if (state === 'REJECTED') return 'danger';
+  if (state === 'NEEDS_REVIEW') return 'warning';
+  if (state === 'IN_PROGRESS') return 'active';
+  return 'default';
 };
 
 // ─── Upload-state helpers ─────────────────────────────────────────────────────
@@ -112,7 +127,7 @@ const Documents = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { token } = useSelector(state => state.auth);
+  const { token, user } = useSelector(state => state.auth);
   const { currentWorkspace } = useSelector((state) => state.workspace);
   const { documents, isUploading, uploadProgress, isLoading, filters } = useSelector(state => state.documents);
 
@@ -149,9 +164,13 @@ const Documents = () => {
   const [videoTotal, setVideoTotal] = useState(0);
   const [filePageInput, setFilePageInput] = useState('1');
   const [videoPageInput, setVideoPageInput] = useState('1');
+  const [reportDownloading, setReportDownloading] = useState(false);
+  const [reportPeriod, setReportPeriod] = useState('month');
+  const [reportState, setReportState] = useState('all');
   const videoUploadQueue = useRef([]); // tracks in-flight uploads to cap concurrency
   const routeWorkspaceId = searchParams.get('workspaceId') || '';
   const activeWorkspaceId = selectedWorkspaceId || routeWorkspaceId;
+  const canUseAssetReports = MANAGERIAL_ROLES.has(user?.role);
 
   useEffect(() => {
     if (!showVideoModal) return;
@@ -196,10 +215,22 @@ const Documents = () => {
       size: formatFileSize(doc.size || doc.fileSize || 0),
       date: new Date(doc.createdAt || Date.now()).toLocaleDateString(),
       encrypted: doc.encrypted !== false,
+      lifecycleState: doc.lifecycleState || 'STARTED',
+      lifecycleLocked: Boolean(doc.lifecycleLocked),
       folderPath: doc.folderPath || (doc.path || '').replace(/^\/+|\/+$/g, ''),
       relativePath: doc.relativePath || doc.originalName || doc.name || doc.title,
     };
   };
+
+  const mapVideo = (video) => ({
+    ...video,
+    id: video._id || video.id,
+    title: video.title || video.fileName || 'Video',
+    size: formatFileSize(video.fileSize || 0),
+    date: new Date(video.createdAt || Date.now()).toLocaleDateString(),
+    lifecycleState: video.lifecycleState || 'STARTED',
+    lifecycleLocked: Boolean(video.lifecycleLocked),
+  });
 
   // ── Document fetch ────────────────────────────────────────────────────────
   useEffect(() => { setCurrentPage(1); }, [filters.searchQuery, filters.type, filters.sortBy]);
@@ -381,7 +412,7 @@ const Documents = () => {
         const response = await axios.get(`${import.meta.env.VITE_API_URL}/videos/${videoViewId}`, {
           headers: authHeaders(),
         });
-        setSidebarVideo(response.data?.data?.video || null);
+            setSidebarVideo(mapVideo(response.data?.data?.video || {}));
       } catch (error) {
         if (error?.response?.status === 401) {
           dispatch(logout());
@@ -443,12 +474,42 @@ const Documents = () => {
           ...(activeWorkspaceId ? { workspaceId: activeWorkspaceId } : {}),
         },
       });
-      setVideos(res.data?.data?.videos || []);
-      setVideoTotalPages(Math.max(1, res.data?.pages || 1));
+      setVideos((res.data?.data?.videos || []).map(mapVideo));
+          setVideos((res.data?.data?.videos || []).map(mapVideo));
       setVideoTotal(res.data?.total || 0);
     } catch (_) {}
   };
 
+  const handleDownloadWorkspaceReport = async () => {
+    try {
+      setReportDownloading(true);
+      const response = await axios.get(api.endpoints.assets.reportExport(), {
+        headers: authHeaders(),
+        params: {
+          ...(activeWorkspaceId ? { workspaceId: activeWorkspaceId } : {}),
+          period: reportPeriod,
+          ...(reportState !== 'all' ? { state: reportState } : {}),
+        },
+        responseType: 'blob',
+      });
+
+      const blob = new Blob([response.data], { type: response.headers['content-type'] || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      const anchor = globalThis.document.createElement('a');
+      anchor.href = url;
+      const reportSuffix = `${reportPeriod}${reportState !== 'all' ? `-${reportState.toLowerCase()}` : ''}`;
+      anchor.download = `workspace-report-${activeWorkspaceId || 'tenant'}-${reportSuffix}-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      globalThis.document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      const message = error?.response?.data?.message || error?.message || 'Failed to export report.';
+      dispatch(addNotification({ id: Date.now(), type: 'error', message, read: false, timestamp: new Date().toISOString() }));
+    } finally {
+      setReportDownloading(false);
+    }
+  };
   // ── Document file selection ───────────────────────────────────────────────
   const docExtensions = Object.values(DOC_MIME_TYPES).flat();
 
@@ -778,6 +839,47 @@ const Documents = () => {
     } catch (e) { alert(e.response?.data?.message || e.message || 'Download failed'); }
   };
 
+  const updateLifecycleState = async (assetType, asset, nextState) => {
+    const assetId = String(asset?.id || asset?._id || '');
+    if (!assetId) return;
+
+    try {
+      const response = await axios.patch(
+        api.endpoints.assets.updateState(assetType, assetId),
+        { lifecycleState: nextState },
+        { headers: authHeaders() },
+      );
+
+      const updatedAsset = response.data?.data?.asset || {};
+      if (assetType === 'document') {
+        const mappedDocument = mapDocument(updatedAsset);
+        dispatch(updateDocument(mappedDocument));
+        setSidebarDocument((prev) => (String(prev?.id || prev?._id) === assetId ? mappedDocument : prev));
+      } else {
+        const mappedVideo = mapVideo(updatedAsset);
+        setVideos((prev) => prev.map((item) => (String(item.id || item._id) === assetId ? mappedVideo : item)));
+        setSidebarVideo((prev) => (String(prev?.id || prev?._id) === assetId ? mappedVideo : prev));
+      }
+
+      dispatch(addNotification({
+        id: Date.now(),
+        type: 'success',
+        message: `${assetType === 'document' ? 'Document' : 'Video'} moved to ${formatLifecycleState(nextState)}`,
+        read: false,
+        timestamp: new Date().toISOString(),
+      }));
+    } catch (error) {
+      const message = error?.response?.data?.message || error?.message || 'Unable to update lifecycle state.';
+      dispatch(addNotification({
+        id: Date.now(),
+        type: 'error',
+        message,
+        read: false,
+        timestamp: new Date().toISOString(),
+      }));
+    }
+  };
+
   const resolveDocumentActionPayload = (documentOrId, fallbackDocument = null) => {
     if (documentOrId && typeof documentOrId === 'object') {
       const id = String(documentOrId?.id || documentOrId?._id || '');
@@ -1019,13 +1121,51 @@ const Documents = () => {
           <h1>My Documents</h1>
           <p className="subtitle">Manage and organise your files &amp; videos</p>
         </div>
-        <button
-          className="btn-primary"
-          onClick={() => activeTab === 'files' ? setShowUploadModal(true) : setShowVideoModal(true)}
-        >
-          <Upload size={20} />
-          {activeTab === 'files' ? 'Upload Documents' : 'Upload Videos'}
-        </button>
+        <div className="page-header-actions">
+          {canUseAssetReports && (
+            <div className="report-controls">
+              <div className="report-filter-group">
+                <Filter size={16} />
+                <select
+                  className="report-filter-select"
+                  value={reportPeriod}
+                  onChange={(event) => setReportPeriod(event.target.value)}
+                >
+                  <option value="day">Daily</option>
+                  <option value="month">Monthly</option>
+                  <option value="year">Yearly</option>
+                </select>
+                <select
+                  className="report-filter-select"
+                  value={reportState}
+                  onChange={(event) => setReportState(event.target.value)}
+                >
+                  <option value="all">All states</option>
+                  {LIFECYCLE_STATES.map((state) => (
+                    <option key={state} value={state}>{formatLifecycleState(state)}</option>
+                  ))}
+                </select>
+              </div>
+              <button
+                className="btn-secondary"
+                onClick={handleDownloadWorkspaceReport}
+                disabled={reportDownloading}
+                type="button"
+              >
+                <BarChart3 size={18} />
+                {reportDownloading ? 'Exporting…' : 'Export Report'}
+              </button>
+            </div>
+          )}
+          <button
+            className="btn-primary"
+            onClick={() => activeTab === 'files' ? setShowUploadModal(true) : setShowVideoModal(true)}
+            type="button"
+          >
+            <Upload size={20} />
+            {activeTab === 'files' ? 'Upload Documents' : 'Upload Videos'}
+          </button>
+        </div>
       </div>
 
       {/* ── Tabs ── */}
@@ -1149,6 +1289,12 @@ const Documents = () => {
                   <div className="video-card-body">
                     <p className="video-card-title" title={v.title}>{v.title}</p>
                     <p className="video-card-meta">{v.fileSizeFormatted || formatFileSize(v.fileSize)} · {v.fileExtension?.toUpperCase()}</p>
+                    <div className="video-card-state-row">
+                      <span className={`document-state-badge tone-${getLifecycleTone(v.lifecycleState)}`}>
+                        {formatLifecycleState(v.lifecycleState)}
+                      </span>
+                      {v.lifecycleLocked && <span className="document-state-lock">Locked</span>}
+                    </div>
                     {v.checksum && <p className="video-card-hash" title={`SHA-256: ${v.checksum}`}>SHA-256: {v.checksum.slice(0, 12)}…</p>}
                   </div>
                   <div className="video-card-actions">
@@ -1253,8 +1399,8 @@ const Documents = () => {
                 <div className="form-group">
                   <label>Workspace</label>
                   <select
-                    value={videoMetadata.workspaceId}
-                    onChange={(e) => setVideoMetadata((prev) => ({ ...prev, workspaceId: e.target.value }))}
+                    value={selectedWorkspaceId}
+                    onChange={(e) => setSelectedWorkspaceId(e.target.value)}
                   >
                     <option value="">No workspace</option>
                     {workspaces.map((workspace) => (
@@ -1445,6 +1591,32 @@ const Documents = () => {
                   <p>{sidebarDocument.description || 'No description provided.'}</p>
                   <small>{sidebarDocument.size} • {sidebarDocument.type}</small>
                 </div>
+                <div className="document-sidebar-card document-sidebar-card--compact">
+                  <div className="sidebar-state-header">
+                    <strong>Lifecycle State</strong>
+                    <span className={`document-state-badge tone-${getLifecycleTone(sidebarDocument.lifecycleState)}`}>
+                      {formatLifecycleState(sidebarDocument.lifecycleState)}
+                    </span>
+                  </div>
+                  <div className="sidebar-state-controls">
+                    <select
+                      value={sidebarDocument.lifecycleState || 'STARTED'}
+                      onChange={(event) => setSidebarDocument((prev) => ({ ...prev, lifecycleState: event.target.value }))}
+                    >
+                      {LIFECYCLE_STATES.map((state) => (
+                        <option key={state} value={state}>{formatLifecycleState(state)}</option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      onClick={() => updateLifecycleState('document', sidebarDocument, sidebarDocument.lifecycleState || 'STARTED')}
+                    >
+                      Save State
+                    </button>
+                  </div>
+                  <p className="sidebar-state-note">Finished and archived assets lock future edits unless the actor is an admin or manager.</p>
+                </div>
                 <Comments
                   documentId={sidebarDocument.id || sidebarDocument._id}
                   onClose={closeSidebar}
@@ -1485,6 +1657,32 @@ const Documents = () => {
                 <strong>{sidebarVideo.title || sidebarVideo.fileName || 'Video'}</strong>
                 <p>{sidebarVideo.description || 'No description provided.'}</p>
                 <small>Use this panel to discuss updates and decisions for this video.</small>
+              </div>
+              <div className="document-sidebar-card document-sidebar-card--compact">
+                <div className="sidebar-state-header">
+                  <strong>Lifecycle State</strong>
+                  <span className={`document-state-badge tone-${getLifecycleTone(sidebarVideo.lifecycleState)}`}>
+                    {formatLifecycleState(sidebarVideo.lifecycleState)}
+                  </span>
+                </div>
+                <div className="sidebar-state-controls">
+                  <select
+                    value={sidebarVideo.lifecycleState || 'STARTED'}
+                    onChange={(event) => setSidebarVideo((prev) => ({ ...prev, lifecycleState: event.target.value }))}
+                  >
+                    {LIFECYCLE_STATES.map((state) => (
+                      <option key={state} value={state}>{formatLifecycleState(state)}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() => updateLifecycleState('video', sidebarVideo, sidebarVideo.lifecycleState || 'STARTED')}
+                  >
+                    Save State
+                  </button>
+                </div>
+                <p className="sidebar-state-note">Lifecycle changes are logged automatically for reporting and audit trails.</p>
               </div>
               <Comments
                 resourceType="video"

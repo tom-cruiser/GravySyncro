@@ -9,6 +9,41 @@
   margin-bottom: 32px;
 }
 
+.page-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.report-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.report-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  background: var(--gray-50);
+}
+
+.report-filter-select {
+  min-width: 120px;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--gray-800);
+}
+
 .page-header h1 {
   margin-bottom: 8px;
 }
@@ -81,6 +116,20 @@
 }
 
 @media (max-width: 900px) {
+  .report-controls {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .report-filter-group {
+    width: 100%;
+  }
+
+  .report-filter-select {
+    flex: 1;
+    min-width: 0;
+  }
+
   .pagination-left,
   .pagination-right,
   .pagination-center {
@@ -176,6 +225,13 @@
 .dropzone-hint {
   font-size: 14px;
   color: var(--gray-500);
+}
+
+.video-card-state-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .selected-files {
@@ -335,6 +391,41 @@
   background: linear-gradient(180deg, #f8fafc, #fff);
 }
 
+.document-sidebar-card--compact {
+  background: #f8fafc;
+}
+
+.sidebar-state-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.9rem;
+}
+
+.sidebar-state-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.sidebar-state-controls select {
+  flex: 1;
+  min-width: 180px;
+  padding: 0.75rem 0.9rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--gray-300);
+  background: #fff;
+}
+
+.sidebar-state-note {
+  margin-top: 0.75rem;
+  color: var(--gray-500);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
 .document-sidebar-card strong {
   display: block;
   margin-bottom: 0.45rem;
@@ -357,6 +448,23 @@
 @media (max-width: 768px) {
   .document-sidebar {
     width: 100%;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .page-header-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .sidebar-state-controls {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
   }
 }
 

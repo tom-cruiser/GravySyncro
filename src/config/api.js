@@ -25,6 +25,11 @@ export default {
       versions: (id) => getApiUrl(`/documents/${id}/versions`),
       restoreVersion: (id, versionNumber) => getApiUrl(`/documents/${id}/versions/${versionNumber}/restore`),
     },
+    assets: {
+      updateState: (type, id) => getApiUrl(`/assets/${type}/${id}/state`),
+      report: () => getApiUrl('/assets/report'),
+      reportExport: () => getApiUrl('/assets/report/export'),
+    },
     admin: {
       dashboardStats: () => getApiUrl('/admin/dashboard/stats'),       // ✓ fixed: was /admin/dashboard-stats
       users: () => getApiUrl('/admin/users'),

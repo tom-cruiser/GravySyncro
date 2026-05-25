@@ -48,6 +48,18 @@ const DocumentCard = ({ document: doc, onDownload, onShare, onDelete, onView, on
     return colors[type] || colors.default;
   };
 
+  const formatLifecycleState = (value) => String(value || 'STARTED').replaceAll('_', ' ');
+
+  const getLifecycleTone = (value) => {
+    const state = String(value || 'STARTED');
+    if (state === 'FINISHED') return 'success';
+    if (state === 'ARCHIVED') return 'muted';
+    if (state === 'REJECTED') return 'danger';
+    if (state === 'NEEDS_REVIEW') return 'warning';
+    if (state === 'IN_PROGRESS') return 'active';
+    return 'default';
+  };
+
   const handleMenuClick = (e) => {
     e.stopPropagation();
     setShowMenu(!showMenu);
@@ -118,6 +130,12 @@ const DocumentCard = ({ document: doc, onDownload, onShare, onDelete, onView, on
             {doc.type}
           </span>
           <span className="document-size">{doc.size}</span>
+        </div>
+        <div className="document-state-row">
+          <span className={`document-state-badge tone-${getLifecycleTone(doc.lifecycleState)}`}>
+            {formatLifecycleState(doc.lifecycleState)}
+          </span>
+          {doc.lifecycleLocked && <span className="document-state-lock">Locked</span>}
         </div>
         <p className="document-date">{doc.date}</p>
       </div>

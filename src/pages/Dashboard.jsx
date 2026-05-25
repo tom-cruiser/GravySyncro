@@ -131,6 +131,8 @@ const Dashboard = () => {
         date: new Date(doc.createdAt).toLocaleDateString(),
         fileKey: doc.fileKey,
         uploadedBy: doc.uploadedBy,
+        lifecycleState: doc.lifecycleState || 'STARTED',
+        lifecycleLocked: Boolean(doc.lifecycleLocked),
         };
       });
       
