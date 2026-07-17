@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, Link } from 'react-router-dom';
-import { Mail, Lock, User, Briefcase, Hash, AlertCircle, Loader2 } from 'lucide-react';
+import { Mail, Lock, User, Briefcase, Hash, AlertCircle, Loader2, Eye, EyeOff } from 'lucide-react';
 import { registerStart, registerSuccess, registerFailure, clearError } from '../features/auth/authSlice';
 import api from '../config/api';
 import LanguageSelector from '../components/LanguageSelector';
@@ -117,14 +117,20 @@ const Register = () => {
 
   return (
     <div className="auth-container">
+      <div className="noise-overlay" aria-hidden="true" />
+      <div className="gradient-orb gradient-orb-1" />
+      <div className="gradient-orb gradient-orb-2" />
+
       <div className="auth-card auth-card-wide">
 
         {/* ── Header ── */}
         <div className="auth-header">
           <div className="auth-header-top auth-header-center-stack">
             <div className="auth-brand auth-brand-center">
-              <img src="/gravysyncrologo.png" alt="GravySyncro" className="auth-logo" />
-              <h1>GravySyncro</h1>
+              <div className="brand-logo-wrapper">
+                <img src="/gravysyncrologo.png" alt="GravySyncro" className="auth-logo" />
+              </div>
+              <span className="auth-brand-text">GravySyncro</span>
             </div>
             <LanguageSelector />
           </div>
@@ -133,12 +139,14 @@ const Register = () => {
 
         {/* ── Form ── */}
         <form onSubmit={handleSubmit} className="auth-form" noValidate>
-          <h2>Sign Up</h2>
-          <p className="form-subtitle">Join thousands of teams collaborating on documents.</p>
+          <div className="form-header">
+            <h2 className="auth-form-title">Sign Up</h2>
+            <p className="form-subtitle">Join thousands of teams collaborating on documents.</p>
+          </div>
 
           {/* Error banner */}
           {displayError && (
-            <div className="alert alert-error" role="alert">
+            <div className="alert" role="alert">
               <AlertCircle size={16} />
               <span>{displayError}</span>
               <button
@@ -155,7 +163,9 @@ const Register = () => {
             <div className="form-group">
               <label htmlFor="firstName">First Name</label>
               <div className="input-wrapper">
-                <User size={16} className="input-icon" />
+                <div className="input-icon-wrapper">
+                  <User size={18} className="input-icon" />
+                </div>
                 <input
                   type="text"
                   id="firstName"
@@ -166,13 +176,16 @@ const Register = () => {
                   placeholder="John"
                   autoComplete="given-name"
                   disabled={isLoading}
+                  className="input-with-icon"
                 />
               </div>
             </div>
             <div className="form-group">
               <label htmlFor="lastName">Last Name</label>
               <div className="input-wrapper">
-                <User size={16} className="input-icon" />
+                <div className="input-icon-wrapper">
+                  <User size={18} className="input-icon" />
+                </div>
                 <input
                   type="text"
                   id="lastName"
@@ -183,6 +196,7 @@ const Register = () => {
                   placeholder="Doe"
                   autoComplete="family-name"
                   disabled={isLoading}
+                  className="input-with-icon"
                 />
               </div>
             </div>
@@ -192,7 +206,9 @@ const Register = () => {
           <div className="form-group">
             <label htmlFor="email">Email Address</label>
             <div className="input-wrapper">
-              <Mail size={16} className="input-icon" />
+              <div className="input-icon-wrapper">
+                <Mail size={18} className="input-icon" />
+              </div>
               <input
                 type="email"
                 id="email"
@@ -203,6 +219,7 @@ const Register = () => {
                 placeholder="your@email.com"
                 autoComplete="email"
                 disabled={isLoading}
+                className="input-with-icon"
               />
             </div>
           </div>
@@ -211,7 +228,9 @@ const Register = () => {
           <div className="form-group">
             <label htmlFor="role">Role</label>
             <div className="input-wrapper">
-              <Briefcase size={16} className="input-icon" />
+              <div className="input-icon-wrapper">
+                <Briefcase size={18} className="input-icon" />
+              </div>
               <select
                 id="role"
                 name="role"
@@ -219,6 +238,7 @@ const Register = () => {
                 onChange={handleChange}
                 required
                 disabled={isLoading}
+                className="input-with-icon"
               >
                 {roles.map(r => <option key={r} value={r}>{r}</option>)}
               </select>
@@ -229,7 +249,9 @@ const Register = () => {
           <div className="form-group">
             <label htmlFor="tenantId">Organization Code <span className="label-optional">(optional)</span></label>
             <div className="input-wrapper">
-              <Hash size={16} className="input-icon" />
+              <div className="input-icon-wrapper">
+                <Hash size={18} className="input-icon" />
+              </div>
               <input
                 type="text"
                 id="tenantId"
@@ -238,6 +260,7 @@ const Register = () => {
                 onChange={handleChange}
                 placeholder="e.g. tenant_abc123"
                 disabled={isLoading}
+                className="input-with-icon"
               />
             </div>
             <small>Share the same code as your teammates to join their organization.</small>
@@ -247,7 +270,9 @@ const Register = () => {
           <div className="form-group">
             <label htmlFor="password">Password</label>
             <div className="input-wrapper has-action">
-              <Lock size={16} className="input-icon" />
+              <div className="input-icon-wrapper">
+                <Lock size={18} className="input-icon" />
+              </div>
               <input
                 type={showPassword ? 'text' : 'password'}
                 id="password"
@@ -261,6 +286,7 @@ const Register = () => {
                 placeholder="••••••••"
                 autoComplete="new-password"
                 disabled={isLoading}
+                className="input-with-icon"
               />
               <button
                 type="button"
@@ -268,7 +294,7 @@ const Register = () => {
                 onClick={() => setShowPassword(v => !v)}
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
-                {showPassword ? 'Hide' : 'Show'}
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
             {capsLockPassword && (
@@ -290,7 +316,9 @@ const Register = () => {
           <div className="form-group">
             <label htmlFor="confirmPassword">Confirm Password</label>
             <div className="input-wrapper has-action">
-              <Lock size={16} className="input-icon" />
+              <div className="input-icon-wrapper">
+                <Lock size={18} className="input-icon" />
+              </div>
               <input
                 type={showConfirmPassword ? 'text' : 'password'}
                 id="confirmPassword"
@@ -304,6 +332,7 @@ const Register = () => {
                 placeholder="••••••••"
                 autoComplete="new-password"
                 disabled={isLoading}
+                className="input-with-icon"
               />
               <button
                 type="button"
@@ -311,7 +340,7 @@ const Register = () => {
                 onClick={() => setShowConfirmPassword(v => !v)}
                 aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
               >
-                {showConfirmPassword ? 'Hide' : 'Show'}
+                {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
             {capsLockConfirmPassword && (
@@ -325,7 +354,7 @@ const Register = () => {
             )}
           </div>
 
-          <button type="submit" className="btn-primary" disabled={isLoading || !registerReady}>
+          <button type="submit" className="btn-primary btn-active" disabled={isLoading || !registerReady}>
             {isLoading
               ? <><Loader2 size={16} className="spin" /> Creating Account…</>
               : 'Create Account'

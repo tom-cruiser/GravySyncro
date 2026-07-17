@@ -59,6 +59,26 @@ const Landing = () => {
     button.style.setProperty("--my", "0px");
   };
 
+  const handle3DMove = (event) => {
+    const card = event.currentTarget;
+    const rect = card.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    const rotateX = (y - centerY) / 20;
+    const rotateY = (centerX - x) / 20;
+    
+    card.style.setProperty("--rotateX", `${rotateX}deg`);
+    card.style.setProperty("--rotateY", `${rotateY}deg`);
+  };
+
+  const handle3DLeave = (event) => {
+    const card = event.currentTarget;
+    card.style.setProperty("--rotateX", "0deg");
+    card.style.setProperty("--rotateY", "0deg");
+  };
+
   const featureCards = [
     {
       icon: Lock,
@@ -129,13 +149,28 @@ const Landing = () => {
     <div className="landing-page">
       <div className="noise-overlay" aria-hidden="true" />
       <header className="landing-nav">
-        <div className="brand-mark">
-          <span className="brand-dot" /> GravySyncro
+        <div 
+          className="brand-wrapper"
+          onMouseMove={handle3DMove}
+          onMouseLeave={handle3DLeave}
+        >
+          <div className="brand-mark">
+            <span className="brand-dot" />
+            <span className="brand-text">GravySyncro</span>
+          </div>
         </div>
         <nav className="nav-actions">
-          <a href="#features">{t("landing.nav.features")}</a>
-          <a href="#contact">{t("landing.nav.contact")}</a>
-          <LanguageSelector />
+          <a href="#features" className="nav-link">
+            <span className="nav-link-text">{t("landing.nav.features")}</span>
+            <span className="nav-link-mirror">{t("landing.nav.features")}</span>
+          </a>
+          <a href="#contact" className="nav-link">
+            <span className="nav-link-text">{t("landing.nav.contact")}</span>
+            <span className="nav-link-mirror">{t("landing.nav.contact")}</span>
+          </a>
+          <div className="nav-language-wrapper">
+            <LanguageSelector />
+          </div>
           <Link
             to="/login"
             className="nav-cta magnetic"
