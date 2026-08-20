@@ -1,4 +1,5 @@
 const ExcelJS = require('exceljs');
+const PDFDocument = require('pdfkit');
 const mongoose = require('mongoose');
 
 const Document = require('../models/Document');
@@ -105,6 +106,30 @@ const parseLifecycleStateFilter = (value) => {
   }
 
   return validStates;
+};
+
+const ASSET_TYPE_ALIASES = {
+  document: 'document',
+  documents: 'document',
+  file: 'document',
+  files: 'document',
+  video: 'video',
+  videos: 'video',
+};
+
+// Which page/tab a report was generated from. Returning null means "both" —
+// used by the admin-wide overview, which isn't scoped to a single asset type.
+const parseAssetTypeFilter = (value) => {
+  if (!value || value === 'all') {
+    return null;
+  }
+
+  const normalized = ASSET_TYPE_ALIASES[String(value).toLowerCase()];
+  if (!normalized) {
+    throw new AppError('Invalid asset type filter. Use "document", "video", or "all".', 400);
+  }
+
+  return normalized;
 };
 
 const parseWorkspaceId = (workspaceId) => {
@@ -231,6 +256,7 @@ const buildWorkspaceAssetReport = async (req) => {
   const workspaceId = req.query.workspaceId ? parseWorkspaceId(req.query.workspaceId) : null;
   const { startDate, endDate, period } = parseReportWindow(req);
   const lifecycleStates = parseLifecycleStateFilter(req.query.state || req.query.states);
+  const assetType = parseAssetTypeFilter(req.query.assetType || req.query.type);
 
   await ensureReportingAccess(req, workspaceId);
 
@@ -242,17 +268,22 @@ const buildWorkspaceAssetReport = async (req) => {
     lifecycleStates,
   };
 
+  const includeDocuments = assetType !== 'video';
+  const includeVideos = assetType !== 'document';
+  const emptyAggregate = Promise.resolve([]);
+
   const [documentBottlenecks, videoBottlenecks, documentStorage, videoStorage, leaderboard] = await Promise.all([
-    Document.aggregate(buildBottleneckPipeline(reportMatch)),
-    Video.aggregate(buildBottleneckPipeline(reportMatch)),
-    Document.aggregate(buildStorageProfilePipeline(reportMatch)),
-    Video.aggregate(buildStorageProfilePipeline(reportMatch)),
+    includeDocuments ? Document.aggregate(buildBottleneckPipeline(reportMatch)) : emptyAggregate,
+    includeVideos ? Video.aggregate(buildBottleneckPipeline(reportMatch)) : emptyAggregate,
+    includeDocuments ? Document.aggregate(buildStorageProfilePipeline(reportMatch)) : emptyAggregate,
+    includeVideos ? Video.aggregate(buildStorageProfilePipeline(reportMatch)) : emptyAggregate,
     ActivityLog.aggregate([
       {
         $match: {
           tenantId: req.user.tenantId,
           ...(workspaceId ? { workspaceId } : {}),
           action: 'STATE_CHANGE',
+          ...(assetType ? { assetType: assetType === 'video' ? 'Video' : 'Document' } : {}),
           ...(Array.isArray(lifecycleStates) && lifecycleStates.length > 0 ? { newState: { $in: lifecycleStates } } : { newState: 'FINISHED' }),
           timestamp: {
             $gte: startDate,
@@ -327,6 +358,7 @@ const buildWorkspaceAssetReport = async (req) => {
       endDate,
       period,
       lifecycleStates,
+      assetType,
     },
     bottlenecks: bottleneckTotals,
     teamFinalizationLeaderboard: leaderboard,
@@ -391,8 +423,13 @@ exports.getWorkspaceAssetReport = catchAsync(async (req, res, next) => {
   });
 });
 
-exports.exportWorkspaceAssetReport = catchAsync(async (req, res, next) => {
-  const report = await buildWorkspaceAssetReport(req);
+const formatAssetTypeLabel = (assetType) => {
+  if (assetType === 'document') return 'Documents only';
+  if (assetType === 'video') return 'Videos only';
+  return 'Documents & Videos';
+};
+
+const buildAssetReportWorkbook = (report) => {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'GravySyncro';
   workbook.created = new Date();
@@ -415,6 +452,7 @@ exports.exportWorkspaceAssetReport = catchAsync(async (req, res, next) => {
   overviewSheet.addRows([
     { metric: 'Tenant ID', value: report.filters.tenantId },
     { metric: 'Workspace ID', value: report.filters.workspaceId || 'All' },
+    { metric: 'Asset Type', value: formatAssetTypeLabel(report.filters.assetType) },
     { metric: 'Period', value: report.filters.period || 'Custom' },
     { metric: 'States', value: selectedStates },
     { metric: 'Start Date', value: formatValue(report.filters.startDate) },
@@ -477,10 +515,181 @@ exports.exportWorkspaceAssetReport = catchAsync(async (req, res, next) => {
     { state: 'REJECTED', count: report.bottlenecks.REJECTED || 0 },
   ]);
 
+  return workbook;
+};
+
+const formatBytesForDisplay = (bytes) => {
+  const value = Number(bytes) || 0;
+  if (value <= 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const exponent = Math.min(Math.floor(Math.log(value) / Math.log(1024)), units.length - 1);
+  const size = value / Math.pow(1024, exponent);
+  return `${size.toFixed(size >= 10 || exponent === 0 ? 0 : 1)} ${units[exponent]}`;
+};
+
+const formatDateForDisplay = (value) => {
+  if (!value) return '—';
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? '—' : date.toISOString().slice(0, 10);
+};
+
+/**
+ * Renders a simple bordered table starting at the document's current
+ * vertical position, adding pages as needed. Returns the y position
+ * after the table.
+ */
+const drawPdfTable = (doc, { headers, rows, columnWidths, title }) => {
+  const startX = doc.page.margins.left;
+  const pageBottom = doc.page.height - doc.page.margins.bottom;
+  const rowHeight = 20;
+
+  if (title) {
+    if (doc.y + 24 > pageBottom) doc.addPage();
+    doc.font('Helvetica-Bold').fontSize(13).fillColor('#111827').text(title, startX, doc.y);
+    doc.moveDown(0.4);
+  }
+
+  const drawHeaderRow = () => {
+    let x = startX;
+    const y = doc.y;
+    doc.font('Helvetica-Bold').fontSize(9).fillColor('#ffffff');
+    doc.rect(startX, y, columnWidths.reduce((a, b) => a + b, 0), rowHeight).fill('#4f46e5');
+    doc.fillColor('#ffffff');
+    headers.forEach((header, i) => {
+      doc.text(String(header), x + 4, y + 6, { width: columnWidths[i] - 8, ellipsis: true });
+      x += columnWidths[i];
+    });
+    doc.y = y + rowHeight;
+  };
+
+  drawHeaderRow();
+
+  doc.font('Helvetica').fontSize(9).fillColor('#111827');
+
+  if (!rows.length) {
+    if (doc.y + rowHeight > pageBottom) doc.addPage();
+    doc.text('No data available', startX + 4, doc.y + 6);
+    doc.y += rowHeight;
+  }
+
+  rows.forEach((row, rowIndex) => {
+    if (doc.y + rowHeight > pageBottom) {
+      doc.addPage();
+      drawHeaderRow();
+      doc.font('Helvetica').fontSize(9).fillColor('#111827');
+    }
+
+    let x = startX;
+    const y = doc.y;
+    if (rowIndex % 2 === 1) {
+      doc.rect(startX, y, columnWidths.reduce((a, b) => a + b, 0), rowHeight).fill('#f3f4f6');
+      doc.fillColor('#111827');
+    }
+    row.forEach((cell, i) => {
+      doc.text(String(cell ?? ''), x + 4, y + 6, { width: columnWidths[i] - 8, ellipsis: true });
+      x += columnWidths[i];
+    });
+    doc.y = y + rowHeight;
+  });
+
+  doc.moveDown(1);
+};
+
+const buildAssetReportPdfBuffer = (report) => new Promise((resolve, reject) => {
+  const doc = new PDFDocument({ margin: 40, size: 'A4' });
+  const chunks = [];
+
+  doc.on('data', (chunk) => chunks.push(chunk));
+  doc.on('end', () => resolve(Buffer.concat(chunks)));
+  doc.on('error', reject);
+
+  const selectedStates = Array.isArray(report.filters.lifecycleStates) && report.filters.lifecycleStates.length > 0
+    ? report.filters.lifecycleStates.join(', ')
+    : 'All';
+
+  doc.font('Helvetica-Bold').fontSize(20).fillColor('#111827').text('GravySyncro Asset Report');
+  doc.font('Helvetica').fontSize(10).fillColor('#6b7280')
+    .text(`Generated ${new Date().toISOString().slice(0, 19).replace('T', ' ')} UTC`);
+  doc.moveDown(1);
+
+  drawPdfTable(doc, {
+    title: 'Overview',
+    headers: ['Metric', 'Value'],
+    columnWidths: [180, 300],
+    rows: [
+      ['Tenant ID', report.filters.tenantId],
+      ['Workspace ID', report.filters.workspaceId || 'All'],
+      ['Asset Type', formatAssetTypeLabel(report.filters.assetType)],
+      ['Period', report.filters.period || 'Custom'],
+      ['States', selectedStates],
+      ['Start Date', formatDateForDisplay(report.filters.startDate)],
+      ['End Date', formatDateForDisplay(report.filters.endDate)],
+      ['Started', report.bottlenecks.STARTED || 0],
+      ['In Progress', report.bottlenecks.IN_PROGRESS || 0],
+      ['Needs Review', report.bottlenecks.NEEDS_REVIEW || 0],
+      ['Rejected', report.bottlenecks.REJECTED || 0],
+    ],
+  });
+
+  drawPdfTable(doc, {
+    title: 'Team Finalization Leaderboard',
+    headers: ['User', 'Email', 'Finished Assets', 'Last Finished At'],
+    columnWidths: [130, 160, 90, 100],
+    rows: report.teamFinalizationLeaderboard.map((row) => [
+      row.displayName || 'Unknown User',
+      row.email || '',
+      row.completedCount || 0,
+      formatDateForDisplay(row.lastCompletedAt),
+    ]),
+  });
+
+  drawPdfTable(doc, {
+    title: 'Storage Profile by File Extension',
+    headers: ['Extension', 'MIME Type', 'Count', 'Total Size'],
+    columnWidths: [90, 190, 70, 130],
+    rows: report.storageProfile.byExtension.map((row) => [
+      row.fileExtension || row.key || 'unknown',
+      row.mimeType || '',
+      row.count || 0,
+      formatBytesForDisplay(row.totalSize),
+    ]),
+  });
+
+  drawPdfTable(doc, {
+    title: 'Storage Profile by MIME Type',
+    headers: ['MIME Type', 'Count', 'Total Size'],
+    columnWidths: [220, 90, 130],
+    rows: report.storageProfile.byMimeType.map((row) => [
+      row.mimeType || row.key || 'application/octet-stream',
+      row.count || 0,
+      formatBytesForDisplay(row.totalSize),
+    ]),
+  });
+
+  doc.end();
+});
+
+exports.exportWorkspaceAssetReport = catchAsync(async (req, res, next) => {
+  const report = await buildWorkspaceAssetReport(req);
+  const format = String(req.query.format || 'xlsx').toLowerCase();
+
+  if (!['xlsx', 'pdf'].includes(format)) {
+    return next(new AppError('Invalid report format. Choose "xlsx" or "pdf".', 400));
+  }
+
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+
+  if (format === 'pdf') {
+    const buffer = await buildAssetReportPdfBuffer(report);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="gravy-syncro-asset-report-${timestamp}.pdf"`);
+    return res.status(200).send(buffer);
+  }
+
+  const workbook = buildAssetReportWorkbook(report);
   const buffer = await workbook.xlsx.writeBuffer();
-  const fileName = `gravy-syncro-asset-report-${new Date().toISOString().replace(/[:.]/g, '-')}.xlsx`;
 
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-  res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+  res.setHeader('Content-Disposition', `attachment; filename="gravy-syncro-asset-report-${timestamp}.xlsx"`);
   res.status(200).send(Buffer.from(buffer));
 });

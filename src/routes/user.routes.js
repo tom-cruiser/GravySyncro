@@ -15,6 +15,10 @@ router.patch('/preferences', userController.updatePreferences);
 router.get('/activity', userController.getUserActivity);
 router.get('/statistics', userController.getUserStats);
 
+// Subscription / storage plan (self-service, affects the whole tenant)
+router.get('/subscription-plans', userController.getSubscriptionPlans);
+router.patch('/subscription-plan', userController.updateSubscriptionPlan);
+
 // Search users
 router.get('/search', userController.searchUsers);
 

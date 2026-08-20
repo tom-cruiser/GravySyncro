@@ -3,7 +3,9 @@ const Tenant = require('../models/Tenant');
 const AppError = require('../utils/appError');
 const catchAsync = require('../utils/catchAsync');
 const { log } = require('../middleware/activityLogger');
-const { getTenantStorageSummary } = require('../utils/tenantStorage');
+const { getTenantStorageSummary, applyTenantStoragePlan } = require('../utils/tenantStorage');
+const { STORAGE_PLANS, STORAGE_PLAN_GB_OPTIONS } = require('../utils/storagePlans');
+const { emitTenantEvent } = require('../config/socket');
 
 /**
  * Get current user profile
@@ -384,6 +386,73 @@ exports.searchUsers = catchAsync(async (req, res, next) => {
     results: users.length,
     data: {
       users,
+    },
+  });
+});
+
+/**
+ * List the available enterprise subscription/storage plans.
+ */
+exports.getSubscriptionPlans = catchAsync(async (req, res) => {
+  res.status(200).json({
+    status: 'success',
+    data: {
+      plans: STORAGE_PLANS,
+    },
+  });
+});
+
+/**
+ * Self-service: change the current user's tenant to a different storage plan.
+ * The plan is shared across the whole tenant, so this affects every member.
+ */
+exports.updateSubscriptionPlan = catchAsync(async (req, res, next) => {
+  const { storagePlanGb } = req.body;
+  const normalizedPlan = Number(storagePlanGb);
+
+  if (!STORAGE_PLAN_GB_OPTIONS.includes(normalizedPlan)) {
+    return next(
+      new AppError(
+        `Invalid storage plan. Allowed plans are: ${STORAGE_PLAN_GB_OPTIONS.join(', ')} GB`,
+        400
+      )
+    );
+  }
+
+  const tenantId = req.user.tenantId;
+  const tenantStorageBefore = await getTenantStorageSummary(tenantId);
+  const storageLimit = await applyTenantStoragePlan(tenantId, normalizedPlan);
+  const tenantStorage = await getTenantStorageSummary(tenantId);
+
+  await log(req, 'settings_change', 'tenant', null, {
+    action: 'subscription_plan_updated',
+    tenantId,
+    oldPlanGb: tenantStorageBefore.storagePlanGb || 50,
+    newPlanGb: normalizedPlan,
+    updatedBy: req.user.email,
+    selfService: true,
+  });
+
+  emitTenantEvent(tenantId, 'tenant:storage-updated', {
+    tenantId,
+    storagePlanGb: normalizedPlan,
+    storageLimit,
+    storageUsed: tenantStorage.storageUsed,
+    storageUsedPercentage: tenantStorage.storageUsedPercentage,
+    updatedAt: new Date().toISOString(),
+  });
+
+  res.status(200).json({
+    status: 'success',
+    message: `Subscription plan updated to ${normalizedPlan} GB`,
+    data: {
+      tenant: {
+        tenantId,
+        storagePlanGb: normalizedPlan,
+        storageUsed: tenantStorage.storageUsed,
+        storageLimit,
+        storageUsedPercentage: tenantStorage.storageUsedPercentage,
+      },
     },
   });
 });

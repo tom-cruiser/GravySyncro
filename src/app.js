@@ -23,6 +23,7 @@ const messageRoutes = require("./routes/message.routes");
 const videoRoutes = require("./routes/video.routes");
 const workspaceRoutes = require("./routes/workspace.routes");
 const assetRoutes = require("./routes/asset.routes");
+const billingRoutes = require("./routes/billing.routes");
 
 // Create Express app
 const app = express();
@@ -95,6 +96,7 @@ app.use("/api/v1/messages", messageRoutes);
 app.use("/api/v1/videos", videoRoutes);
 app.use("/api/v1/workspaces", workspaceRoutes);
 app.use("/api/v1/assets", assetRoutes);
+app.use("/api/v1/billing", billingRoutes);
 
 // Handle undefined routes
 app.all("*", (req, res, next) => {

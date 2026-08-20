@@ -9,6 +9,7 @@ const app = require('./app');
 const connectDB = require('./config/database');
 const { startStorageQuotaNotifier } = require('./jobs/storageQuotaNotifier');
 const { startStaleUploadCleaner } = require('./jobs/staleUploadCleaner');
+const { startInvoiceBiller } = require('./jobs/invoiceBiller');
 const { setSocketServer } = require('./config/socket');
 const jwt = require('jsonwebtoken');
 const User = require('./models/User');
@@ -63,6 +64,7 @@ server.listen(PORT, () => {
   console.log(`🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
   startStorageQuotaNotifier();
   startStaleUploadCleaner();
+  startInvoiceBiller();
 });
 
 // Handle unhandled promise rejections
