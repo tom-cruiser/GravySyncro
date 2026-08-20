@@ -94,8 +94,8 @@
   width: 80px;
   height: 80px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-  color: white;
+  background: #000;
+  color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;

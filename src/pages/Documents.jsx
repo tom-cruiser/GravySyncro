@@ -167,6 +167,7 @@ const Documents = () => {
   const [reportDownloading, setReportDownloading] = useState(false);
   const [reportPeriod, setReportPeriod] = useState('month');
   const [reportState, setReportState] = useState('all');
+  const [reportFormat, setReportFormat] = useState('xlsx');
   const videoUploadQueue = useRef([]); // tracks in-flight uploads to cap concurrency
   const routeWorkspaceId = searchParams.get('workspaceId') || '';
   const activeWorkspaceId = selectedWorkspaceId || routeWorkspaceId;
@@ -481,6 +482,15 @@ const Documents = () => {
   };
 
   const handleDownloadWorkspaceReport = async () => {
+    const isPdf = reportFormat === 'pdf';
+    const defaultMimeType = isPdf
+      ? 'application/pdf'
+      : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    // Scope the report to whichever tab is actually open on this page, so it
+    // reflects what's on screen instead of always blending files + videos
+    // tenant-wide (that broader view is what the admin dashboard's report is for).
+    const assetType = activeTab === 'videos' ? 'video' : 'document';
+
     try {
       setReportDownloading(true);
       const response = await axios.get(api.endpoints.assets.reportExport(), {
@@ -488,17 +498,19 @@ const Documents = () => {
         params: {
           ...(activeWorkspaceId ? { workspaceId: activeWorkspaceId } : {}),
           period: reportPeriod,
+          format: reportFormat,
+          assetType,
           ...(reportState !== 'all' ? { state: reportState } : {}),
         },
         responseType: 'blob',
       });
 
-      const blob = new Blob([response.data], { type: response.headers['content-type'] || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const blob = new Blob([response.data], { type: response.headers['content-type'] || defaultMimeType });
       const url = window.URL.createObjectURL(blob);
       const anchor = globalThis.document.createElement('a');
       anchor.href = url;
       const reportSuffix = `${reportPeriod}${reportState !== 'all' ? `-${reportState.toLowerCase()}` : ''}`;
-      anchor.download = `workspace-report-${activeWorkspaceId || 'tenant'}-${reportSuffix}-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      anchor.download = `${assetType}-report-${activeWorkspaceId || 'tenant'}-${reportSuffix}-${new Date().toISOString().slice(0, 10)}.${isPdf ? 'pdf' : 'xlsx'}`;
       globalThis.document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
@@ -1145,6 +1157,14 @@ const Documents = () => {
                     <option key={state} value={state}>{formatLifecycleState(state)}</option>
                   ))}
                 </select>
+                <select
+                  className="report-filter-select"
+                  value={reportFormat}
+                  onChange={(event) => setReportFormat(event.target.value)}
+                >
+                  <option value="xlsx">Excel (.xlsx)</option>
+                  <option value="pdf">PDF (.pdf)</option>
+                </select>
               </div>
               <button
                 className="btn-secondary"
@@ -1153,7 +1173,9 @@ const Documents = () => {
                 type="button"
               >
                 <BarChart3 size={18} />
-                {reportDownloading ? 'Exporting…' : 'Export Report'}
+                {reportDownloading
+                  ? 'Exporting…'
+                  : `Export ${activeTab === 'videos' ? 'Video' : 'Document'} Report (${reportFormat === 'pdf' ? 'PDF' : 'Excel'})`}
               </button>
             </div>
           )}

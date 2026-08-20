@@ -128,7 +128,7 @@ const Register = () => {
           <div className="auth-header-top auth-header-center-stack">
             <div className="auth-brand auth-brand-center">
               <div className="brand-logo-wrapper">
-                <img src="/gravysyncrologo.png" alt="GravySyncro" className="auth-logo" />
+                <img src="/redesign-icon.png" alt="GravySyncro" className="auth-logo" />
               </div>
               <span className="auth-brand-text">GravySyncro</span>
             </div>

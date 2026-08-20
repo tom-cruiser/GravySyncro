@@ -65,8 +65,9 @@
 }
 
 .workspace-mini-btn.active {
-  border-color: #2563eb;
-  color: #1d4ed8;
+  border-color: #000;
+  color: #000;
+  background: #f1f5f9;
 }
 
 .workspace-gallery-summary {
@@ -97,7 +98,7 @@
 }
 
 .workspace-gallery-card:focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid #000;
   outline-offset: 2px;
 }
 

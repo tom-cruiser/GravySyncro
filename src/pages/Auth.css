@@ -144,7 +144,7 @@
 .auth-brand {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
   text-decoration: none;
 }
 
@@ -153,19 +153,19 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, var(--auth-c1) 0%, var(--auth-c2) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 4px 12px rgba(28, 27, 46, 0.1);
+  width: 48px;
+  height: 48px;
+  border-radius: 13px;
+  background: var(--auth-white);
+  border: 1px solid var(--auth-border-soft);
+  box-shadow: 0 3px 10px rgba(28, 27, 46, 0.08);
 }
 
 .auth-logo {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: 8px;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .brand-sparkle {
@@ -261,7 +261,7 @@
 .auth-brand-center {
   flex-direction: column;
   text-align: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .auth-form h2 {
@@ -384,22 +384,34 @@
 /* Input Wrapper - icon is taken out of flow so it can never
    collide with the input's text, caret, or browser-native icons */
 .input-wrapper {
-  --icon-space: 46px;   /* space reserved at the start for the leading icon */
+  --icon-space: 54px;   /* space reserved at the start for the leading icon */
   --action-space: 46px; /* space reserved at the end for the eye-toggle button */
   position: relative;
   display: flex;
   align-items: center;
   border: 1.5px solid var(--auth-border);
-  border-radius: 12px;
+  border-radius: 14px;
   background: var(--auth-cream);
-  transition: all 0.3s ease;
+  transition: border-color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
   padding: 0;
 }
 
-.input-wrapper.focused {
+.input-wrapper:hover {
+  border-color: rgba(122, 111, 176, 0.35);
+}
+
+/* :focus-within is the primary mechanism so every field gets a visible
+   focus state for free, even ones that don't wire up onFocus/onBlur to
+   toggle the .focused class (e.g. the Register page's name/role/org/
+   password fields). The .focused class stays supported for fields that
+   do track it explicitly (Login, 2FA). Native outline is suppressed on
+   .input-with-icon below, so this ring is the only focus indicator -
+   it must never be removed without replacing it. */
+.input-wrapper.focused,
+.input-wrapper:focus-within {
   border-color: var(--auth-c2);
   background: var(--auth-white);
-  box-shadow: 0 0 0 3px rgba(122, 111, 176, 0.12);
+  box-shadow: 0 0 0 4px rgba(122, 111, 176, 0.14);
 }
 
 /* Icon wrapper - taken out of the flex flow and pinned to the start
@@ -408,7 +420,7 @@
    clicks/typing focus either. */
 .input-icon-wrapper {
   position: absolute;
-  inset-inline-start: 14px;
+  inset-inline-start: 16px;
   top: 50%;
   transform: translateY(-50%);
   display: flex;
@@ -421,11 +433,12 @@
 .input-icon {
   color: var(--auth-muted);
   transition: color 0.3s ease;
-  width: 18px;
-  height: 18px;
+  width: 19px;
+  height: 19px;
 }
 
-.input-wrapper.focused .input-icon {
+.input-wrapper.focused .input-icon,
+.input-wrapper:focus-within .input-icon {
   color: var(--auth-c2);
 }
 
@@ -434,7 +447,7 @@
    direction (LTR/RTL) or autofill state */
 .input-wrapper .input-with-icon {
   width: 100%;
-  height: 44px;
+  height: 48px;
   padding-top: 10px !important;
   padding-bottom: 10px !important;
   padding-inline-start: var(--icon-space) !important;
@@ -444,7 +457,7 @@
   border: none;
   background: transparent;
   color: var(--auth-ink);
-  font-size: 14px;
+  font-size: 14.5px;
   transition: background 0.3s ease;
   box-sizing: border-box !important;
   outline: none;
@@ -476,10 +489,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border: none;
-  border-radius: 8px;
+  border-radius: 9px;
   background: transparent;
   color: var(--auth-muted);
   cursor: pointer;

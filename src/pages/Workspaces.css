@@ -11,7 +11,7 @@
   gap: 1rem;
   padding: 1.5rem 1.6rem;
   border-radius: 20px;
-  background: linear-gradient(135deg, #0f172a, #1e293b 50%, #334155);
+  background: linear-gradient(135deg, #000 0%, #1a1a1a 50%, #333 100%);
   color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
@@ -28,7 +28,7 @@
 
 .workspaces-hero p {
   margin: 0;
-  color: rgba(226, 232, 240, 0.93);
+  color: rgba(255, 255, 255, 0.85);
   max-width: 70ch;
 }
 
@@ -48,8 +48,8 @@
 
 .workspace-kpi-card {
   border-radius: 12px;
-  border: 1px solid rgba(148, 163, 184, 0.35);
-  background: rgba(15, 23, 42, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.08);
   padding: 0.55rem 0.65rem;
   display: grid;
   gap: 0.2rem;
@@ -69,7 +69,7 @@
 
 .workspaces-hero-cta {
   align-self: center;
-  box-shadow: 0 10px 26px rgba(2, 6, 23, 0.35);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.35);
   white-space: nowrap;
 }
 
@@ -108,7 +108,7 @@
   padding: 1rem;
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(15, 23, 42, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .workspace-cards-grid {
@@ -159,7 +159,7 @@
 
 .workspace-client {
   margin-top: 0.55rem;
-  color: #334155;
+  color: #1a1a1a;
 }
 
 .workspace-last-activity {
@@ -179,14 +179,14 @@
 .workspace-empty p {
   margin: 0.7rem 0 0.25rem;
   font-weight: 700;
-  color: #334155;
+  color: #1a1a1a;
 }
 
 .modal-overlay {
   position: fixed;
   inset: 0;
   z-index: 1200;
-  background: rgba(2, 6, 23, 0.56);
+  background: rgba(0, 0, 0, 0.56);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -200,7 +200,7 @@
   border-radius: 16px;
   background: #fff;
   border: 1px solid #e2e8f0;
-  box-shadow: 0 22px 60px rgba(15, 23, 42, 0.25);
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.25);
 }
 
 .workspace-modal-wide {
@@ -304,7 +304,7 @@
   border: 1px solid #cbd5e1;
   border-radius: 999px;
   background: #fff;
-  color: #0f172a;
+  color: #000;
   padding: 0.3rem 0.55rem;
   font-size: 0.8rem;
   display: inline-flex;
@@ -329,8 +329,8 @@
   padding: 1rem;
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.08);
 }
 
 .card-title {
@@ -388,13 +388,13 @@
 }
 
 .primary-btn {
-  background: #0f172a;
+  background: #000;
   color: white;
 }
 
 .secondary-btn {
   background: #e2e8f0;
-  color: #0f172a;
+  color: #000;
 }
 
 .workspace-delete-btn {

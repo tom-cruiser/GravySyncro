@@ -35,6 +35,7 @@ const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [reportPeriod, setReportPeriod] = useState('month');
   const [reportState, setReportState] = useState('all');
+  const [reportFormat, setReportFormat] = useState('xlsx');
 
   // Handle navigation from notification
   useEffect(() => {
@@ -61,21 +62,27 @@ const AdminDashboard = () => {
   };
 
   const handleExportAssetReport = async () => {
+    const isPdf = reportFormat === 'pdf';
+    const defaultMimeType = isPdf
+      ? 'application/pdf'
+      : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
     try {
       const response = await axios.get(api.endpoints.assets.reportExport(), {
         headers: { Authorization: `Bearer ${token}` },
         params: {
           period: reportPeriod,
+          format: reportFormat,
           ...(reportState !== 'all' ? { state: reportState } : {}),
         },
         responseType: 'blob',
       });
 
-      const blob = new Blob([response.data], { type: response.headers['content-type'] || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const blob = new Blob([response.data], { type: response.headers['content-type'] || defaultMimeType });
       const url = window.URL.createObjectURL(blob);
       const anchor = document.createElement('a');
       anchor.href = url;
-      anchor.download = `tenant-asset-report-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      anchor.download = `tenant-asset-report-${new Date().toISOString().slice(0, 10)}.${isPdf ? 'pdf' : 'xlsx'}`;
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
@@ -239,7 +246,7 @@ const AdminDashboard = () => {
                   style={{ marginTop: '14px', display: 'inline-flex', alignItems: 'center', gap: '8px' }}
                 >
                   <Download size={16} />
-                  Export Asset Report
+                  Export Asset Report ({reportFormat === 'pdf' ? 'PDF' : 'Excel'})
                 </button>
                 <div className="admin-report-controls">
                   <div className="admin-report-filter-group">
@@ -254,6 +261,10 @@ const AdminDashboard = () => {
                       {['STARTED', 'IN_PROGRESS', 'NEEDS_REVIEW', 'REJECTED', 'FINISHED', 'ARCHIVED'].map((state) => (
                         <option key={state} value={state}>{state.replaceAll('_', ' ')}</option>
                       ))}
+                    </select>
+                    <select value={reportFormat} onChange={(event) => setReportFormat(event.target.value)}>
+                      <option value="xlsx">Excel (.xlsx)</option>
+                      <option value="pdf">PDF (.pdf)</option>
                     </select>
                   </div>
                 </div>

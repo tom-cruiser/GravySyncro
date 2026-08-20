@@ -12,6 +12,7 @@ import Documents from './pages/Documents';
 import Profile from './pages/Profile';
 import Support from './pages/Support';
 import Billing from './pages/Billing';
+import Invoices from './pages/Invoices';
 import AdminDashboard from './pages/AdminDashboard';
 import Workspaces from './pages/Workspaces';
 import { logout, setAuthUser } from './features/auth/authSlice';
@@ -77,6 +78,7 @@ function App() {
           <Route path="profile" element={<Profile />} />
           <Route path="support" element={<Support />} />
           <Route path="billing" element={<Billing />} />
+          <Route path="billing/invoices" element={<Invoices />} />
           <Route path="admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
         </Route>
         

@@ -16,6 +16,7 @@ import {
   Bell,
   CreditCard,
   FolderKanban,
+  Receipt,
 } from 'lucide-react';
 import { logout } from '../features/auth/authSlice';
 import { prependNotification, setUnreadCount } from '../features/notifications/notificationsSlice';
@@ -112,6 +113,7 @@ const Layout = () => {
     { path: '/profile', icon: User, label: t('navigation.profile') },
     { path: '/support', icon: HelpCircle, label: t('navigation.support') },
     { path: '/billing', icon: CreditCard, label: 'Billing' },
+    { path: '/billing/invoices', icon: Receipt, label: 'Invoices' },
   ];
 
   // Add admin link if user is Admin
@@ -136,7 +138,7 @@ const Layout = () => {
             {tenantLogo ? (
               <img src={tenantLogo} alt="Tenant logo" className="tenant-logo" />
             ) : (
-              <h2>GravySyncro</h2>
+              <img src="/redesign.png" alt="GravySyncro" className="app-logo" />
             )}
           </div>
           <button className="close-sidebar" onClick={() => setSidebarOpen(false)}>
@@ -160,7 +162,7 @@ const Layout = () => {
 
         <div className="sidebar-footer">
           <div className="user-info">
-            <div className="user-avatar">
+            <div className="sidebar-user-avatar">
               {user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}
             </div>
             <div className="user-details">

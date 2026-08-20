@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { FileText, Upload, Clock, Bell, FolderKanban, Users, HardDrive } from 'lucide-react';
+import { FileText, CalendarDays, Clock, Bell, FolderKanban, Users, HardDrive } from 'lucide-react';
 import axios from 'axios';
 import { logout } from '../features/auth/authSlice';
 import { fetchDocumentsSuccess } from '../features/documents/documentsSlice';
@@ -157,11 +157,11 @@ const Dashboard = () => {
   };
 
   const dashboardStats = [
-    { icon: FileText, label: t('dashboard.totalDocuments'), value: stats.totalDocuments, color: '#667eea' },
-    { icon: Upload, label: t('dashboard.thisMonth'), value: stats.thisMonth, color: '#48bb78' },
-    { icon: Clock, label: t('dashboard.recent'), value: stats.recent, color: '#ed8936' },
-    { icon: FolderKanban, label: workspaceLabel, value: stats.workspaceCount, color: '#0891b2' },
-    { icon: Bell, label: t('dashboard.notifications'), value: unreadCount, color: '#f56565' },
+    { icon: FileText, label: t('dashboard.totalDocuments'), value: stats.totalDocuments },
+    { icon: CalendarDays, label: t('dashboard.thisMonth'), value: stats.thisMonth },
+    { icon: Clock, label: t('dashboard.recent'), value: stats.recent },
+    { icon: FolderKanban, label: workspaceLabel, value: stats.workspaceCount },
+    { icon: Bell, label: t('dashboard.notifications'), value: unreadCount, alert: unreadCount > 0 },
   ];
 
   const handleDownload = async (doc) => {
@@ -225,13 +225,13 @@ const Dashboard = () => {
 
       <div className="stats-grid">
         {dashboardStats.map((stat, index) => (
-          <div key={index} className="stat-card" style={{ borderLeftColor: stat.color }}>
-            <div className="stat-icon" style={{ backgroundColor: `${stat.color}20`, color: stat.color }}>
-              <stat.icon size={24} />
+          <div key={index} className={`stat-card ${stat.alert ? 'stat-card--alert' : ''}`}>
+            <div className="stat-icon">
+              <stat.icon size={22} strokeWidth={2} />
             </div>
             <div className="stat-content">
               <p className="stat-label">{stat.label}</p>
-              <h2 className="stat-value">{loadingStats ? '...' : stat.value}</h2>
+              <h2 className="stat-value">{loadingStats ? '—' : stat.value}</h2>
             </div>
           </div>
         ))}

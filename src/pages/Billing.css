@@ -11,6 +11,88 @@
   margin-bottom: 10px;
 }
 
+/* ── Banners ──────────────────────────────────────────── */
+
+.billing-banner {
+  border-radius: var(--radius);
+  padding: 12px 18px;
+  margin-bottom: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.billing-banner-success {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+.billing-banner-error {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+/* ── Current plan summary ─────────────────────────────── */
+
+.current-plan-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--gray-50, #f9fafb);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  padding: 18px 22px;
+  margin-bottom: 28px;
+}
+
+.current-plan-label {
+  display: block;
+  font-size: 12px;
+  color: var(--gray-500, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+}
+
+.current-plan-summary strong {
+  font-size: 16px;
+  color: var(--gray-900, #111);
+}
+
+.current-plan-bar {
+  height: 8px;
+  border-radius: 6px;
+  background: var(--gray-200);
+  overflow: hidden;
+}
+
+.current-plan-bar-fill {
+  height: 100%;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary, #8b5cf6) 100%);
+  transition: width 0.3s ease;
+}
+
+/* ── Loading ──────────────────────────────────────────── */
+
+.billing-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 60px 0;
+  color: var(--gray-500, #6b7280);
+}
+
+.billing-loading .spin {
+  animation: billing-spin 1s linear infinite;
+}
+
+@keyframes billing-spin {
+  to { transform: rotate(360deg); }
+}
+
 /* ── Plans Grid ───────────────────────────────────────── */
 
 .plans-grid {
@@ -41,6 +123,15 @@
 .plan-card.popular {
   border-color: var(--primary);
   box-shadow: 0 8px 32px rgba(99, 102, 241, 0.18);
+}
+
+.plan-card.current {
+  border-color: #22c55e;
+  box-shadow: 0 8px 32px rgba(34, 197, 94, 0.16);
+}
+
+.current-badge {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
 }
 
 /* Popular badge */
@@ -166,6 +257,14 @@
   color: white;
 }
 
+.plan-btn:disabled {
+  cursor: default;
+  opacity: 0.7;
+  border-color: #22c55e;
+  color: #16a34a;
+  background: transparent;
+}
+
 /* Note bar */
 .billing-note {
   display: flex;
@@ -217,6 +316,49 @@
   color: var(--gray-600, #4b5563);
   line-height: 1.6;
   margin-bottom: 24px;
+}
+
+.modal-error {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  font-size: 13px;
+  margin: -12px 0 20px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.modal-actions .btn-primary,
+.modal-actions .btn-ghost {
+  flex: 1;
+  padding: 12px;
+}
+
+.btn-ghost {
+  border: 2px solid var(--gray-200);
+  background: transparent;
+  color: var(--gray-700, #374151);
+  border-radius: var(--radius);
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: var(--gray-50, #f9fafb);
+}
+
+.btn-ghost:disabled,
+.modal-actions .btn-primary:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 /* ── Responsive ─────────────────────────────────────────── */

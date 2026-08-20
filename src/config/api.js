@@ -71,6 +71,14 @@ export default {
     },
     users: {
       profile: () => getApiUrl('/users/profile'),
+      subscriptionPlans: () => getApiUrl('/users/subscription-plans'),
+      updateSubscriptionPlan: () => getApiUrl('/users/subscription-plan'),
+    },
+    billing: {
+      invoices: (params = '') => getApiUrl(`/billing/invoices${params}`),
+      invoice: (id) => getApiUrl(`/billing/invoices/${id}`),
+      invoicePdf: (id) => getApiUrl(`/billing/invoices/${id}/pdf`),
+      generateInvoice: () => getApiUrl('/billing/invoices/generate'),
     },
     health: () => getApiUrl('/health'),
   }

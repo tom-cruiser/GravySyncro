@@ -19,45 +19,84 @@
 
 .stat-card {
   background: white;
-  padding: 24px;
+  padding: 20px 22px;
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
+  border: 1px solid var(--gray-200);
+  box-shadow: var(--shadow-sm);
   display: flex;
   align-items: center;
   gap: 16px;
-  border-left: 4px solid var(--primary);
   transition: var(--transition);
 }
 
 .stat-card:hover {
-  box-shadow: var(--shadow-lg);
+  border-color: var(--gray-300);
+  box-shadow: var(--shadow-md);
   transform: translateY(-2px);
 }
 
 .stat-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: var(--radius-lg);
+  width: 46px;
+  height: 46px;
+  border-radius: var(--radius);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  background: var(--gray-100);
+  color: var(--gray-800);
+  border: 1px solid var(--gray-200);
+  transition: var(--transition);
+}
+
+.stat-card:hover .stat-icon {
+  background: var(--gray-900);
+  color: white;
+  border-color: var(--gray-900);
 }
 
 .stat-content {
   flex: 1;
+  min-width: 0;
 }
 
 .stat-label {
-  font-size: 14px;
-  color: var(--gray-600);
-  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .stat-value {
   font-size: 28px;
   font-weight: 700;
   color: var(--gray-900);
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+/* Only the notifications card ever earns this — it's a genuine alert
+   state (unread > 0), not decoration, so it's the one place a semantic
+   color (var(--danger)) is justified in an otherwise monochrome grid. */
+.stat-card--alert .stat-icon {
+  background: rgba(245, 101, 101, 0.08);
+  color: var(--danger);
+  border-color: rgba(245, 101, 101, 0.35);
+}
+
+.stat-card--alert:hover .stat-icon {
+  background: var(--danger);
+  color: white;
+  border-color: var(--danger);
+}
+
+.stat-card--alert .stat-value {
+  color: var(--danger);
 }
 
 .dashboard-content {

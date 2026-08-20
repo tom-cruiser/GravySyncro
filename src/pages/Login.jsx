@@ -116,7 +116,7 @@ const Login = () => {
           <div className="auth-header-top">
             <div className="auth-brand">
               <div className="brand-logo-wrapper">
-                <img src="/gravysyncrologo.png" alt="GravySyncro" className="auth-logo" />
+                <img src="/redesign-icon.png" alt="GravySyncro" className="auth-logo" />
                 <Sparkles size={14} className="brand-sparkle" />
               </div>
               <span className="auth-brand-text">GravySyncro</span>

@@ -5,6 +5,13 @@
 }
 
 :root {
+  /* The app is a light, black-and-white design that never adapts to the
+     OS theme. Without this, browsers render native controls (select,
+     input, etc.) using dark-mode UA styling when the OS is set to dark
+     mode — e.g. white text on the white dropdown backgrounds this app
+     always uses, making role/status selects appear blank. */
+  color-scheme: light;
+
   --primary: #1a1a1a;
   --primary-dark: #000000;
   --secondary: #333333;

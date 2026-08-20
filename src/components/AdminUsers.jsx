@@ -372,6 +372,8 @@ const AdminUsers = () => {
           <option value="50">50 GB</option>
           <option value="100">100 GB</option>
           <option value="200">200 GB</option>
+          <option value="500">500 GB</option>
+          <option value="1000">1 TB</option>
         </select>
       </div>
 
@@ -396,6 +398,8 @@ const AdminUsers = () => {
             <option value={50}>50 GB</option>
             <option value={100}>100 GB</option>
             <option value={200}>200 GB</option>
+            <option value={500}>500 GB</option>
+            <option value={1000}>1 TB</option>
           </select>
           <button
             type="button"
@@ -628,6 +632,8 @@ const AdminUsers = () => {
                   <option value={50}>50 GB</option>
                   <option value={100}>100 GB</option>
                   <option value={200}>200 GB</option>
+                  <option value={500}>500 GB</option>
+                  <option value={1000}>1 TB</option>
                 </select>
                 <small className="storage-help">
                   Current enterprise usage: {formatBytes(selectedUser?.storageUsed || 0)} / {formatBytes(selectedUser?.storageLimit || 0)}
