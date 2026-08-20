@@ -25,6 +25,34 @@
   overflow: hidden;
 }
 
+/* Back link — fixed to the viewport (not the padded/centered
+   .auth-container) so it never has to fight that container's flex
+   centering or its mobile padding overrides. */
+.auth-back-link {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--auth-white);
+  border: 1px solid var(--auth-border-soft);
+  color: var(--auth-muted);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: 0 2px 8px rgba(28, 27, 46, 0.06);
+  transition: all 0.2s ease;
+}
+
+.auth-back-link:hover {
+  color: var(--auth-ink);
+  border-color: var(--auth-c2);
+}
+
 /* Noise overlay */
 .noise-overlay {
   position: absolute;
@@ -573,6 +601,19 @@
   border-color: var(--auth-c2);
 }
 
+/* A <button> reset to read as inline text matching .link-inline's color,
+   since the Terms checkbox needs a clickable label that opens a modal
+   rather than navigating away (an <a>/<Link> would lose the in-progress
+   signup form). */
+.terms-inline-link {
+  display: inline;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+
 /* Alerts */
 .alert {
   display: flex;
@@ -786,7 +827,15 @@
 @media (max-width: 640px) {
   .auth-container {
     align-items: flex-start;
-    padding-top: 28px;
+    /* Extra clearance so the fixed .auth-back-link pill (top: 20px) has
+       clean space above the card instead of overlapping its rounded
+       top-left corner. */
+    padding-top: 76px;
+  }
+
+  .auth-back-link {
+    top: 16px;
+    left: 16px;
   }
 
   .auth-header {

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSelector } from "react-redux";
 import axios from "axios";
+import { io } from "socket.io-client";
 import {
   Mail,
   MailOpen,
@@ -16,7 +17,12 @@ import {
 } from "lucide-react";
 import "./AdminMessages.css";
 
-const AdminMessages = () => {
+// `source` scopes which messages this instance fetches/shows:
+//   "app"                 -> in-app support messages (default)
+//   "public_contact_form" -> landing-page contact form submissions
+// Rendered twice from AdminDashboard.jsx as two separate tabs sharing
+// this same list/detail UI, each scoped to its own source.
+const AdminMessages = ({ source = "app", title }) => {
   const { token } = useSelector((state) => state.auth);
   const [messages, setMessages] = useState([]);
   const [selectedMessage, setSelectedMessage] = useState(null);
@@ -33,9 +39,56 @@ const AdminMessages = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
+  const resolvedTitle = title || (source === "public_contact_form" ? "Contact Messages" : "Support Messages");
+
   useEffect(() => {
     fetchMessages();
-  }, [page, filters]);
+  }, [page, filters, source]);
+
+  // Live updates: the backend pushes a `message:new` event to every
+  // admin over socket.io as soon as a message is created (see
+  // messageController.js). Each tab only accepts events matching its
+  // own `source`, mirroring the same filter the backend applies to the
+  // initial fetch (an "app" tab treats anything that isn't
+  // "public_contact_form" — including undefined, for pre-existing
+  // messages — as its own).
+  useEffect(() => {
+    if (!token) return undefined;
+
+    const socketBaseUrl = (import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL || "").replace(/\/api\/v1\/?$/, "");
+    const socket = io(socketBaseUrl || window.location.origin, {
+      transports: ["websocket", "polling"],
+      withCredentials: true,
+    });
+
+    socket.on("connect", () => {
+      socket.emit("authenticate", { token });
+    });
+
+    socket.on("message:new", (payload) => {
+      const incoming = payload?.message;
+      if (!incoming) return;
+
+      const incomingSource = payload?.source || "app";
+      const belongsToThisTab = source === "public_contact_form"
+        ? incomingSource === "public_contact_form"
+        : incomingSource !== "public_contact_form";
+      if (!belongsToThisTab) return;
+
+      // Only insert on page 1 — if an admin is a few pages deep, jumping
+      // a new row in front of what they're looking at would be jarring.
+      // They'll see it as soon as they page back to the top.
+      setMessages((prev) => {
+        if (page !== 1 || prev.some((m) => m._id === incoming._id)) return prev;
+        return [incoming, ...prev];
+      });
+      setStats((prev) => ({ unreadCount: (prev.unreadCount || 0) + 1 }));
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [token, source, page]);
 
   const fetchMessages = async () => {
     try {
@@ -43,6 +96,7 @@ const AdminMessages = () => {
       const params = {
         page,
         limit: 20,
+        source,
         ...filters,
       };
 
@@ -183,7 +237,7 @@ const AdminMessages = () => {
       <div className="messages-header">
         <div>
           <h2>
-            <Mail size={24} /> Support Messages
+            <Mail size={24} /> {resolvedTitle}
             {stats.unreadCount > 0 && (
               <span className="unread-badge">{stats.unreadCount}</span>
             )}
@@ -272,8 +326,13 @@ const AdminMessages = () => {
                       <MailOpen size={18} />
                     )}
                     <span className="user-name">
-                      {message.user?.firstName} {message.user?.lastName}
+                      {message.source === "public_contact_form"
+                        ? message.visitor?.email
+                        : `${message.user?.firstName || ""} ${message.user?.lastName || ""}`}
                     </span>
+                    {message.source === "public_contact_form" && (
+                      <span className="source-badge">Contact Form</span>
+                    )}
                   </div>
                   <span
                     className={`priority-badge ${getPriorityClass(message.priority)}`}
@@ -333,11 +392,23 @@ const AdminMessages = () => {
                 <div className="detail-user-info">
                   <User size={24} />
                   <div>
-                    <h3>
-                      {selectedMessage.user?.firstName}{" "}
-                      {selectedMessage.user?.lastName}
-                    </h3>
-                    <p>{selectedMessage.user?.email}</p>
+                    {selectedMessage.source === "public_contact_form" ? (
+                      <>
+                        <h3>
+                          {selectedMessage.visitor?.email}{" "}
+                          <span className="source-badge">Contact Form</span>
+                        </h3>
+                        <p>{selectedMessage.visitor?.phone}</p>
+                      </>
+                    ) : (
+                      <>
+                        <h3>
+                          {selectedMessage.user?.firstName}{" "}
+                          {selectedMessage.user?.lastName}
+                        </h3>
+                        <p>{selectedMessage.user?.email}</p>
+                      </>
+                    )}
                   </div>
                 </div>
                 <div className="detail-actions">
@@ -400,6 +471,14 @@ const AdminMessages = () => {
                     ? "Update Response:"
                     : "Send Response:"}
                 </h4>
+                {selectedMessage.source === "public_contact_form" && (
+                  <p className="response-form-note">
+                    This visitor has no account, so your response is saved
+                    here but won't trigger an in-app notification — reach
+                    them directly at {selectedMessage.visitor?.email || "their email"}{" "}
+                    if needed.
+                  </p>
+                )}
                 <textarea
                   value={response}
                   onChange={(e) => setResponse(e.target.value)}

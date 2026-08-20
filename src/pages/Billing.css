@@ -115,6 +115,16 @@
   transition: var(--transition);
 }
 
+.plan-card-contact {
+  background: var(--gray-50, #f9fafb);
+  border: 2px dashed var(--gray-300);
+  justify-content: center;
+}
+
+.plan-card-contact .plan-storage {
+  margin-bottom: 4px;
+}
+
 .plan-card:hover {
   transform: translateY(-4px);
   box-shadow: var(--shadow-lg, 0 12px 40px rgba(0,0,0,0.12));
@@ -227,6 +237,7 @@
 
 /* Buttons */
 .plan-btn {
+  display: block;
   margin-top: 8px;
   width: 100%;
   padding: 12px;
@@ -236,6 +247,9 @@
   color: var(--primary);
   font-weight: 700;
   font-size: 15px;
+  text-align: center;
+  text-decoration: none;
+  box-sizing: border-box;
   cursor: pointer;
   transition: var(--transition);
 }

@@ -25,6 +25,13 @@ export default {
       versions: (id) => getApiUrl(`/documents/${id}/versions`),
       restoreVersion: (id, versionNumber) => getApiUrl(`/documents/${id}/versions/${versionNumber}/restore`),
     },
+    audios: {
+      list: (params = '') => getApiUrl(`/audios${params}`),
+      upload: () => getApiUrl('/audios'),
+      byId: (id) => getApiUrl(`/audios/${id}`),
+      download: (id) => getApiUrl(`/audios/${id}/download`),
+      delete: (id) => getApiUrl(`/audios/${id}`),
+    },
     assets: {
       updateState: (type, id) => getApiUrl(`/assets/${type}/${id}/state`),
       report: () => getApiUrl('/assets/report'),
@@ -47,6 +54,8 @@ export default {
       create: (documentId) => getApiUrl(`/comments/document/${documentId}`),
       listVideo: (videoId) => getApiUrl(`/comments/video/${videoId}`),
       createVideo: (videoId) => getApiUrl(`/comments/video/${videoId}`),
+      listAudio: (audioId) => getApiUrl(`/comments/audio/${audioId}`),
+      createAudio: (audioId) => getApiUrl(`/comments/audio/${audioId}`),
       update: (commentId) => getApiUrl(`/comments/${commentId}`),
       delete: (commentId) => getApiUrl(`/comments/${commentId}`),
     },
@@ -68,6 +77,7 @@ export default {
     },
     messages: {
       list: (params = '') => getApiUrl(`/messages${params}`),
+      publicContact: () => getApiUrl('/messages/public'),
     },
     users: {
       profile: () => getApiUrl('/users/profile'),

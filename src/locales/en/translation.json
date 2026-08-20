@@ -222,9 +222,9 @@
     },
     "hero": {
       "eyebrow": "Enterprise-grade document operations",
-      "title": "Operate documents with confidence",
-      "description": "GravySyncro unifies secure archiving, structured collaboration, and administrative governance in one controlled workspace. Every document action is traceable, role-aware, and synchronized in real time.",
-      "primaryCta": "Start secure access",
+      "title": "Archive Securely. Collaborate Instantly.",
+      "description": "GravySyncro is the all-in-one SaaS workspace for modern teams to securely store critical documents while editing and brainstorming together in real-time.",
+      "primaryCta": "Start Your Free Trial",
       "secondaryCta": "Speak with our team",
       "points": {
         "one": "Multi-tenant control with role-based access",
@@ -255,45 +255,46 @@
       }
     },
     "features": {
-      "eyebrow": "Latest capabilities",
-      "title": "A unified operating layer for document teams",
-      "description": "GravySyncro now combines collaboration, administration, and account controls into a single trusted environment for enterprise operations.",
+      "eyebrow": "Core features",
+      "title": "Everything your team needs, in one workspace",
+      "description": "GravySyncro brings archiving, live collaboration, and syncing together so your team never has to juggle tools.",
       "cards": {
-        "messaging": {
-          "title": "Support Messaging",
-          "description": "Submit support requests, track lifecycle status, and receive administrator responses directly within the platform."
+        "archiving": {
+          "title": "Effortless Archiving",
+          "description": "Never lose a file again. Keep historical data safe, searchable, and organized."
         },
-        "versioning": {
-          "title": "Version History",
-          "description": "Preserve a complete document timeline, review historical versions, and maintain full edit accountability."
+        "collaboration": {
+          "title": "Live Collaboration",
+          "description": "Edit, comment, and build on documents simultaneously with zero lag."
         },
-        "admin": {
-          "title": "Admin Control Center",
-          "description": "Supervise users, tenants, notifications, and activity logs through a consolidated operational dashboard."
-        },
-        "profile": {
-          "title": "Profile and Security",
-          "description": "Manage identity details, organization context, and credential security from a dedicated profile workspace."
-        },
-        "billing": {
-          "title": "Billing and Plans",
-          "description": "Control subscriptions, storage tiers, and account-level billing visibility for predictable scaling."
-        },
-        "workspace": {
-          "title": "Structured Workspaces",
-          "description": "Organize teams and files with searchable grids, structured grouping, and faster context-based navigation."
+        "syncing": {
+          "title": "Seamless Syncing",
+          "description": "Connects smoothly with the tools your team already uses (like Slack notifications)."
         }
       }
     },
     "workflow": {
-      "eyebrow": "Operational flow",
-      "title": "Built for reliable daily execution",
-      "description": "A clear workflow keeps teams productive while preserving control, traceability, and security at every stage.",
+      "eyebrow": "How it works",
+      "title": "Three simple steps to get started",
+      "description": "From upload to auto-save, GravySyncro keeps every step secure, organized, and perfectly in sync.",
       "steps": {
-        "one": "Provision tenant-ready workspaces, onboard members, and enforce role-based access from day one.",
-        "two": "Upload, share, and collaborate on documents with comments, version tracking, and real-time notifications.",
-        "three": "Use administrative insights, audit logs, and billing controls to sustain governance as adoption grows."
+        "one": {
+          "title": "Upload & Organize",
+          "description": "your files into secure vaults."
+        },
+        "two": {
+          "title": "Invite Your Workspace",
+          "description": "with custom role-based permissions."
+        },
+        "three": {
+          "title": "Work & Auto-Save",
+          "description": "while the system versions and archives changes in the background."
+        }
       }
+    },
+    "finalCta": {
+      "title": "Ready to bring your team's documents to life?",
+      "button": "Get Started for Free"
     },
     "stats": {
       "items": {
@@ -315,17 +316,20 @@
       "eyebrow": "Contact",
       "title": "Ready to deploy GravySyncro across your team?",
       "description": "Connect with us to plan your rollout, align security requirements, and launch with confidence.",
-      "cards": {
-        "email": {
-          "title": "Email"
-        },
-        "phone": {
-          "title": "Phone"
-        },
-        "location": {
-          "title": "Location",
-          "value": "Bujumbura, Burundi"
-        }
+      "form": {
+        "emailLabel": "Email",
+        "emailPlaceholder": "you@company.com",
+        "phoneLabel": "Phone",
+        "phonePlaceholder": "61 676 947",
+        "countryCodeLabel": "Country code",
+        "subjectLabel": "Subject",
+        "subjectPlaceholder": "What can we help with?",
+        "messageLabel": "Message",
+        "messagePlaceholder": "Tell us a bit more...",
+        "submit": "Send Message",
+        "sending": "Sending...",
+        "successMessage": "Thanks for reaching out — we'll get back to you soon.",
+        "errorMessage": "Something went wrong. Please try again."
       }
     }
   },

@@ -84,7 +84,7 @@ const NotificationPanel = ({ onClose }) => {
         const relatedWorkspaceId = notification.relatedWorkspace?._id || notification.relatedWorkspace;
         if (relatedWorkspaceId && String(relatedWorkspaceId) === String(currentWorkspace._id)) return true;
         if (notification.actionUrl?.includes(`workspaceId=${currentWorkspace._id}`)) return true;
-        return ['support_response', 'message_received'].includes(notification.type) === false;
+        return ['support_response', 'message_received', 'contact_form_received'].includes(notification.type) === false;
       })
     : displayNotifications;
 
@@ -170,6 +170,12 @@ const NotificationPanel = ({ onClose }) => {
     ) {
       // Navigate to admin messages tab
       navigate("/admin", { state: { activeTab: "messages" } });
+    } else if (
+      notification.type === "contact_form_received" &&
+      user?.role === "Admin"
+    ) {
+      // Navigate to the admin Contact Messages tab
+      navigate("/admin", { state: { activeTab: "contactMessages" } });
     } else if (notification.relatedDocument) {
       // Navigate to document if available
       navigate("/documents");
@@ -180,6 +186,7 @@ const NotificationPanel = ({ onClose }) => {
     switch (type) {
       case "support_response":
       case "message_received":
+      case "contact_form_received":
         return (
           <MessageCircle size={18} className="notification-icon-support" />
         );

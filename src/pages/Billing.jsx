@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { Check, Zap, Shield, HardDrive, Loader2 } from 'lucide-react';
+import { Check, Zap, Shield, HardDrive, Loader2, Mail } from 'lucide-react';
 import { io } from 'socket.io-client';
 import axios from 'axios';
 import api from '../config/api';
@@ -213,6 +214,14 @@ const Billing = () => {
                 <h2 className="plan-name">{plan.name}</h2>
                 <p className="plan-storage">{plan.storageGb} GB shared pool</p>
 
+                {plan.priceUsdPerMonth > 0 && (
+                  <div className="plan-price">
+                    <span className="price-dollar">$</span>
+                    <span className="price-amount">{plan.priceUsdPerMonth}</span>
+                    <span className="price-period">/ month</span>
+                  </div>
+                )}
+
                 <ul className="plan-features">
                   {plan.features.map((feature, i) => (
                     <li key={i}>
@@ -232,6 +241,27 @@ const Billing = () => {
               </div>
             );
           })}
+
+          {/* Not a real, selectable storage plan — just a CTA for anyone who
+              needs more than the largest tier above. */}
+          <div className="plan-card plan-card-contact">
+            <div className="plan-icon" style={{ background: 'var(--primary)18', color: 'var(--primary)' }}>
+              <Mail size={28} />
+            </div>
+
+            <h2 className="plan-name">Enterprise</h2>
+            <p className="plan-storage">Need more than 1 TB?</p>
+
+            <ul className="plan-features">
+              <li><Check size={16} className="feature-check" />Custom storage &amp; team size</li>
+              <li><Check size={16} className="feature-check" />Dedicated onboarding &amp; support</li>
+              <li><Check size={16} className="feature-check" />Custom contract &amp; invoicing</li>
+            </ul>
+
+            <Link to="/support" className="plan-btn">
+              Contact Us
+            </Link>
+          </div>
         </div>
       )}
 

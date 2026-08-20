@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useDropzone } from 'react-dropzone';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Upload, X, Film, FileText, RotateCcw, CheckCircle2, AlertCircle, MessageCircle, BarChart3, Filter } from 'lucide-react';
+import { Upload, X, Film, FileText, RotateCcw, CheckCircle2, AlertCircle, MessageCircle, BarChart3, Filter, Mic, Music, Play, Download, Trash2 } from 'lucide-react';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 import api from '../config/api';
@@ -27,6 +27,7 @@ import DocumentLightbox, { canPreviewInLightbox } from '../components/DocumentLi
 import VersionHistory from '../components/VersionHistory';
 import SearchBar from '../components/SearchBar';
 import ShareDocument from '../components/ShareDocument';
+import AudioRecorder from '../components/AudioRecorder';
 import './Documents.css';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -70,6 +71,24 @@ const VIDEO_ACCEPT_MIME = {
   'video/3gpp': ['.3gp'],
   'video/3gpp2': ['.3g2'],
   'video/mpeg': ['.mpeg', '.mpg'],
+};
+
+const MAX_AUDIO_SIZE = 157286400; // 150 MB — same single-shot upload cap as documents
+const ALLOWED_AUDIO_MIME = new Set([
+  'audio/webm', 'audio/ogg', 'audio/mpeg', 'audio/mp3',
+  'audio/mp4', 'audio/x-m4a', 'audio/aac', 'audio/wav', 'audio/x-wav', 'audio/flac',
+]);
+const ALLOWED_AUDIO_EXT = new Set(['webm', 'ogg', 'mp3', 'm4a', 'aac', 'wav', 'flac', 'mp4']);
+const AUDIO_ACCEPT_MIME = {
+  'audio/webm': ['.webm'],
+  'audio/ogg': ['.ogg'],
+  'audio/mpeg': ['.mp3'],
+  'audio/mp4': ['.m4a'],
+  'audio/x-m4a': ['.m4a'],
+  'audio/aac': ['.aac'],
+  'audio/wav': ['.wav'],
+  'audio/x-wav': ['.wav'],
+  'audio/flac': ['.flac'],
 };
 
 const DOCUMENT_TYPES = ['General', 'Contract', 'Legal', 'Academic', 'Financial', 'Personal'];
@@ -169,6 +188,25 @@ const Documents = () => {
   const [reportState, setReportState] = useState('all');
   const [reportFormat, setReportFormat] = useState('xlsx');
   const videoUploadQueue = useRef([]); // tracks in-flight uploads to cap concurrency
+
+  // Audio upload state
+  const [showAudioModal, setShowAudioModal] = useState(false);
+  const [audioUploadMode, setAudioUploadMode] = useState('record'); // 'record' | 'upload'
+  const [recordedAudioBlob, setRecordedAudioBlob] = useState(null);
+  const [recordedAudioDuration, setRecordedAudioDuration] = useState(0);
+  const [audioUploadFile, setAudioUploadFile] = useState(null);
+  const [audioMetadata, setAudioMetadata] = useState({ title: '', description: '', category: 'General', workspaceId: '' });
+  const [audios, setAudios] = useState([]);
+  const [sidebarAudio, setSidebarAudio] = useState(null);
+  const [audioPage, setAudioPage] = useState(1);
+  const [audioTotalPages, setAudioTotalPages] = useState(1);
+  const [audioTotal, setAudioTotal] = useState(0);
+  const [audioPageInput, setAudioPageInput] = useState('1');
+  const [audioUploading, setAudioUploading] = useState(false);
+  const [audioUploadProgress, setAudioUploadProgress] = useState(0);
+  const [playingAudioId, setPlayingAudioId] = useState(null);
+  const [playingAudioUrl, setPlayingAudioUrl] = useState(null);
+
   const routeWorkspaceId = searchParams.get('workspaceId') || '';
   const activeWorkspaceId = selectedWorkspaceId || routeWorkspaceId;
   const canUseAssetReports = MANAGERIAL_ROLES.has(user?.role);
@@ -180,6 +218,14 @@ const Documents = () => {
       return { ...prev, workspaceId: activeWorkspaceId || '' };
     });
   }, [showVideoModal, activeWorkspaceId]);
+
+  useEffect(() => {
+    if (!showAudioModal) return;
+    setAudioMetadata((prev) => {
+      if (prev.workspaceId) return prev;
+      return { ...prev, workspaceId: activeWorkspaceId || '' };
+    });
+  }, [showAudioModal, activeWorkspaceId]);
 
   // ── Helpers ──────────────────────────────────────────────────────────────
   const authHeaders = () => ({ Authorization: `Bearer ${token}` });
@@ -233,6 +279,23 @@ const Documents = () => {
     lifecycleLocked: Boolean(video.lifecycleLocked),
   });
 
+  const formatDuration = (totalSeconds) => {
+    const seconds = Math.max(Math.round(Number(totalSeconds) || 0), 0);
+    const minutes = Math.floor(seconds / 60);
+    return `${minutes}:${String(seconds % 60).padStart(2, '0')}`;
+  };
+
+  const mapAudio = (audio) => ({
+    ...audio,
+    id: audio._id || audio.id,
+    title: audio.title || audio.fileName || 'Audio clip',
+    size: formatFileSize(audio.fileSize || 0),
+    date: new Date(audio.createdAt || Date.now()).toLocaleDateString(),
+    lifecycleState: audio.lifecycleState || 'STARTED',
+    lifecycleLocked: Boolean(audio.lifecycleLocked),
+    durationLabel: audio.durationFormatted || formatDuration(audio.duration),
+  });
+
   // ── Document fetch ────────────────────────────────────────────────────────
   useEffect(() => { setCurrentPage(1); }, [filters.searchQuery, filters.type, filters.sortBy]);
 
@@ -248,6 +311,10 @@ const Documents = () => {
   useEffect(() => {
     setVideoPageInput(String(videoPage));
   }, [videoPage]);
+
+  useEffect(() => {
+    setAudioPageInput(String(audioPage));
+  }, [audioPage]);
 
   useEffect(() => {
     if (!token) return undefined;
@@ -427,6 +494,38 @@ const Documents = () => {
     fetchVideo();
   }, [searchParams, token, videos]);
 
+  useEffect(() => {
+    const audioViewId = searchParams.get('audioView');
+    if (!audioViewId || !token) {
+      setSidebarAudio(null);
+      return;
+    }
+
+    const existingAudio = audios.find((audio) => String(audio._id || audio.id) === String(audioViewId));
+    if (existingAudio) {
+      setSidebarAudio(existingAudio);
+      return;
+    }
+
+    const fetchAudio = async () => {
+      try {
+        const response = await axios.get(api.endpoints.audios.byId(audioViewId), {
+          headers: authHeaders(),
+        });
+        setSidebarAudio(mapAudio(response.data?.data?.audio || {}));
+      } catch (error) {
+        if (error?.response?.status === 401) {
+          dispatch(logout());
+          navigate('/login');
+          return;
+        }
+        setSidebarAudio(null);
+      }
+    };
+
+    fetchAudio();
+  }, [searchParams, token, audios]);
+
   const fetchDocuments = async (page = currentPage) => {
     dispatch(fetchDocumentsStart());
     const sortByMap = {
@@ -481,6 +580,28 @@ const Documents = () => {
     } catch (_) {}
   };
 
+  // ── Audio fetch ───────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!token || activeTab !== 'audio') return;
+    fetchAudios(audioPage);
+  }, [token, audioPage, activeTab, activeWorkspaceId]);
+
+  const fetchAudios = async (page = audioPage) => {
+    try {
+      const res = await axios.get(api.endpoints.audios.list(), {
+        headers: authHeaders(),
+        params: {
+          page,
+          limit: 20,
+          ...(activeWorkspaceId ? { workspaceId: activeWorkspaceId } : {}),
+        },
+      });
+      setAudios((res.data?.data?.audios || []).map(mapAudio));
+      setAudioTotal(res.data?.total || 0);
+      setAudioTotalPages(Math.max(1, Number(res.data?.pages) || 1));
+    } catch (_) {}
+  };
+
   const handleDownloadWorkspaceReport = async () => {
     const isPdf = reportFormat === 'pdf';
     const defaultMimeType = isPdf
@@ -489,7 +610,7 @@ const Documents = () => {
     // Scope the report to whichever tab is actually open on this page, so it
     // reflects what's on screen instead of always blending files + videos
     // tenant-wide (that broader view is what the admin dashboard's report is for).
-    const assetType = activeTab === 'videos' ? 'video' : 'document';
+    const assetType = activeTab === 'videos' ? 'video' : (activeTab === 'audio' ? 'audio' : 'document');
 
     try {
       setReportDownloading(true);
@@ -596,6 +717,40 @@ const Documents = () => {
     multiple: true,
     accept: VIDEO_ACCEPT_MIME,
     maxSize: MAX_VIDEO_SIZE,
+  });
+
+  // ── Audio file selection (upload-existing-file mode) ─────────────────────
+  const isValidAudioFile = (file) => {
+    if (ALLOWED_AUDIO_MIME.has(file.type) || file?.type?.startsWith('audio/')) return true;
+    const ext = file?.name?.includes('.') ? file.name.split('.').pop().toLowerCase() : '';
+    return ALLOWED_AUDIO_EXT.has(ext);
+  };
+
+  const applyAudioFileSelection = useCallback((files) => {
+    const incoming = Array.from(files || []);
+    if (!incoming.length) return;
+
+    const rejected = incoming.filter(f => !isValidAudioFile(f));
+    const tooLarge = incoming.filter(f => isValidAudioFile(f) && f.size > MAX_AUDIO_SIZE);
+    const valid = incoming.filter(f => isValidAudioFile(f) && f.size <= MAX_AUDIO_SIZE);
+
+    if (rejected.length) dispatch(addNotification({ id: Date.now(), type: 'error', message: `${rejected.length} file(s) rejected: unsupported audio format.`, read: false, timestamp: new Date().toISOString() }));
+    if (tooLarge.length) dispatch(addNotification({ id: Date.now() + 1, type: 'error', message: `${tooLarge.length} file(s) rejected: exceeds 150 MB limit.`, read: false, timestamp: new Date().toISOString() }));
+
+    const file = valid[0] || null;
+    setAudioUploadFile(file);
+    if (file && !audioMetadata.title) setAudioMetadata(prev => ({ ...prev, title: file.name.replace(/\.[^.]+$/, '') }));
+  }, [dispatch, audioMetadata.title]);
+
+  const {
+    getRootProps: getAudioRootProps,
+    getInputProps: getAudioInputProps,
+    isDragActive: isAudioDragActive,
+  } = useDropzone({
+    onDrop: applyAudioFileSelection,
+    multiple: false,
+    accept: AUDIO_ACCEPT_MIME,
+    maxSize: MAX_AUDIO_SIZE,
   });
 
   // ── Document upload ───────────────────────────────────────────────────────
@@ -830,6 +985,61 @@ const Documents = () => {
     setVideoUploads(prev => prev.filter(u => u.id !== id));
   };
 
+  // ── Audio upload ───────────────────────────────────────────────────────────
+  // Single-shot multipart/form-data POST — audio clips (recordings or files)
+  // are comfortably within a normal request body, so unlike video there's no
+  // chunked/resumable multipart flow needed here.
+  const handleAudioUpload = async () => {
+    const file = audioUploadMode === 'record'
+      ? (recordedAudioBlob ? new File([recordedAudioBlob], `recording-${Date.now()}.webm`, { type: recordedAudioBlob.type || 'audio/webm' }) : null)
+      : audioUploadFile;
+
+    if (!file) {
+      dispatch(addNotification({ id: Date.now(), type: 'error', message: 'Record or select an audio file first.', read: false, timestamp: new Date().toISOString() }));
+      return;
+    }
+
+    const duration = audioUploadMode === 'record' ? recordedAudioDuration : 0;
+    const meta = { ...audioMetadata, workspaceId: audioMetadata.workspaceId || activeWorkspaceId || '' };
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('title', meta.title || file.name.replace(/\.[^.]+$/, ''));
+    formData.append('description', meta.description || '');
+    formData.append('category', meta.category || 'General');
+    formData.append('duration', String(duration));
+    formData.append('recordedLive', String(audioUploadMode === 'record'));
+    if (meta.workspaceId) formData.append('workspaceId', meta.workspaceId);
+
+    setAudioUploading(true);
+    setAudioUploadProgress(0);
+
+    try {
+      await axios.post(api.endpoints.audios.upload(), formData, {
+        headers: authHeaders(),
+        onUploadProgress: (event) => {
+          const percent = event.total ? Math.min(99, Math.round((event.loaded / event.total) * 100)) : 0;
+          setAudioUploadProgress(percent);
+        },
+      });
+
+      setAudioUploadProgress(100);
+      dispatch(addNotification({ id: Date.now(), type: 'success', message: `${meta.title || file.name} uploaded successfully`, read: false, timestamp: new Date().toISOString() }));
+      setShowAudioModal(false);
+      setRecordedAudioBlob(null);
+      setRecordedAudioDuration(0);
+      setAudioUploadFile(null);
+      setAudioMetadata({ title: '', description: '', category: 'General', workspaceId: '' });
+      fetchAudios(1);
+      setAudioPage(1);
+    } catch (err) {
+      const msg = err?.response?.data?.message || err?.message || 'Upload failed.';
+      dispatch(addNotification({ id: Date.now(), type: 'error', message: `Audio upload failed: ${msg}`, read: false, timestamp: new Date().toISOString() }));
+    } finally {
+      setAudioUploading(false);
+    }
+  };
+
   // ── Document actions ──────────────────────────────────────────────────────
   const fetchDocumentBlob = async (doc, disposition = 'attachment') => {
     const response = await axios.get(
@@ -867,16 +1077,21 @@ const Documents = () => {
         const mappedDocument = mapDocument(updatedAsset);
         dispatch(updateDocument(mappedDocument));
         setSidebarDocument((prev) => (String(prev?.id || prev?._id) === assetId ? mappedDocument : prev));
+      } else if (assetType === 'audio') {
+        const mappedAudio = mapAudio(updatedAsset);
+        setAudios((prev) => prev.map((item) => (String(item.id || item._id) === assetId ? mappedAudio : item)));
+        setSidebarAudio((prev) => (String(prev?.id || prev?._id) === assetId ? mappedAudio : prev));
       } else {
         const mappedVideo = mapVideo(updatedAsset);
         setVideos((prev) => prev.map((item) => (String(item.id || item._id) === assetId ? mappedVideo : item)));
         setSidebarVideo((prev) => (String(prev?.id || prev?._id) === assetId ? mappedVideo : prev));
       }
 
+      const assetLabel = assetType === 'document' ? 'Document' : (assetType === 'audio' ? 'Audio clip' : 'Video');
       dispatch(addNotification({
         id: Date.now(),
         type: 'success',
-        message: `${assetType === 'document' ? 'Document' : 'Video'} moved to ${formatLifecycleState(nextState)}`,
+        message: `${assetLabel} moved to ${formatLifecycleState(nextState)}`,
         read: false,
         timestamp: new Date().toISOString(),
       }));
@@ -980,11 +1195,13 @@ const Documents = () => {
     const nextParams = new URLSearchParams(searchParams);
     nextParams.delete('view');
     nextParams.delete('videoView');
+    nextParams.delete('audioView');
     setSearchParams(nextParams, { replace: true });
     setLightboxOpen(false);
     setActivePreviewId(null);
     setSidebarDocument(null);
     setSidebarVideo(null);
+    setSidebarAudio(null);
     setSidebarLoading(false);
   };
 
@@ -1106,6 +1323,54 @@ const Documents = () => {
     } catch (e) { alert(e.response?.data?.message || 'Delete failed'); }
   };
 
+  // ── Audio actions ─────────────────────────────────────────────────────────
+  const handleAudioPlay = async (audio) => {
+    const id = String(audio._id || audio.id);
+    if (playingAudioId === id) {
+      setPlayingAudioId(null);
+      setPlayingAudioUrl(null);
+      return;
+    }
+    try {
+      const res = await axios.get(api.endpoints.audios.byId(id), { headers: authHeaders() });
+      setPlayingAudioId(id);
+      setPlayingAudioUrl(res.data?.data?.streamUrl || null);
+    } catch (e) { alert(e.response?.data?.message || 'Unable to play audio clip'); }
+  };
+
+  const handleAudioDownload = async (audio) => {
+    try {
+      const res = await axios.get(api.endpoints.audios.download(audio._id || audio.id), { headers: authHeaders() });
+      window.open(res.data.data.url, '_blank', 'noopener,noreferrer');
+    } catch (e) { alert(e.response?.data?.message || 'Download failed'); }
+  };
+
+  const openAudioConversation = (audio) => {
+    const id = String(audio?._id || audio?.id || '');
+    if (!id) return;
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set('audioView', id);
+    if (selectedWorkspaceId) {
+      nextParams.set('workspaceId', selectedWorkspaceId);
+    }
+    setSearchParams(nextParams, { replace: false });
+    setSidebarAudio(audio);
+  };
+
+  const handleAudioDelete = async (audio) => {
+    if (!window.confirm(`Delete "${audio.title}"?`)) return;
+    try {
+      await axios.delete(api.endpoints.audios.delete(audio._id || audio.id), { headers: authHeaders() });
+      dispatch(addNotification({ id: Date.now(), type: 'success', message: 'Audio clip deleted', read: false, timestamp: new Date().toISOString() }));
+      if (playingAudioId === String(audio._id || audio.id)) {
+        setPlayingAudioId(null);
+        setPlayingAudioUrl(null);
+      }
+      fetchAudios(audioPage);
+    } catch (e) { alert(e.response?.data?.message || 'Delete failed'); }
+  };
+
   // ── Upload status badge helpers ───────────────────────────────────────────
   const statusLabel = (s) => ({
     [UPLOAD_STATUS.QUEUED]:     'Queued',
@@ -1131,7 +1396,7 @@ const Documents = () => {
       <div className="page-header">
         <div>
           <h1>My Documents</h1>
-          <p className="subtitle">Manage and organise your files &amp; videos</p>
+          <p className="subtitle">Manage and organise your files, videos &amp; audio</p>
         </div>
         <div className="page-header-actions">
           {canUseAssetReports && (
@@ -1175,17 +1440,21 @@ const Documents = () => {
                 <BarChart3 size={18} />
                 {reportDownloading
                   ? 'Exporting…'
-                  : `Export ${activeTab === 'videos' ? 'Video' : 'Document'} Report (${reportFormat === 'pdf' ? 'PDF' : 'Excel'})`}
+                  : `Export ${activeTab === 'videos' ? 'Video' : (activeTab === 'audio' ? 'Audio' : 'Document')} Report (${reportFormat === 'pdf' ? 'PDF' : 'Excel'})`}
               </button>
             </div>
           )}
           <button
             className="btn-primary"
-            onClick={() => activeTab === 'files' ? setShowUploadModal(true) : setShowVideoModal(true)}
+            onClick={() => {
+              if (activeTab === 'files') setShowUploadModal(true);
+              else if (activeTab === 'audio') setShowAudioModal(true);
+              else setShowVideoModal(true);
+            }}
             type="button"
           >
             <Upload size={20} />
-            {activeTab === 'files' ? 'Upload Documents' : 'Upload Videos'}
+            {activeTab === 'files' ? 'Upload Documents' : (activeTab === 'audio' ? 'Add Audio' : 'Upload Videos')}
           </button>
         </div>
       </div>
@@ -1203,6 +1472,12 @@ const Documents = () => {
           onClick={() => setActiveTab('videos')}
         >
           <Film size={16} /> Videos
+        </button>
+        <button
+          className={`docs-tab ${activeTab === 'audio' ? 'active' : ''}`}
+          onClick={() => setActiveTab('audio')}
+        >
+          <Music size={16} /> Audio
         </button>
       </div>
 
@@ -1379,6 +1654,111 @@ const Documents = () => {
               </div>
               <button type="button" className="btn-secondary" disabled={videoPage >= videoTotalPages} onClick={() => setVideoPage(p => Math.min(videoTotalPages, p + 1))}>Next</button>
               <button type="button" className="btn-secondary" disabled={videoPage >= videoTotalPages} onClick={() => setVideoPage(videoTotalPages)}>Last</button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ══════════════════════════════ AUDIO TAB ══════════════════════════ */}
+      {activeTab === 'audio' && (
+        <>
+          {audios.length === 0 ? (
+            <div className="empty-state" style={{ textAlign: 'center', padding: '3rem', color: 'var(--gray-500)' }}>
+              <Music size={48} style={{ marginBottom: '1rem', opacity: 0.4 }} />
+              <p>No audio clips yet. Click <strong>Add Audio</strong> to record a memo or upload a file.</p>
+            </div>
+          ) : (
+            <div className="video-grid">
+              {audios.map(a => {
+                const audioId = String(a._id || a.id);
+                const isPlaying = playingAudioId === audioId;
+                return (
+                  <div key={audioId} className="video-card audio-card">
+                    <div className="video-card-icon"><Music size={32} /></div>
+                    <div className="video-card-body">
+                      <p className="video-card-title" title={a.title}>{a.title}</p>
+                      <p className="video-card-meta">
+                        {a.durationLabel} · {a.fileSizeFormatted || formatFileSize(a.fileSize)} · {a.fileExtension?.toUpperCase()}
+                        {a.recordedLive && <span className="audio-card-source"> · Recorded</span>}
+                      </p>
+                      <div className="video-card-state-row">
+                        <span className={`document-state-badge tone-${getLifecycleTone(a.lifecycleState)}`}>
+                          {formatLifecycleState(a.lifecycleState)}
+                        </span>
+                        {a.lifecycleLocked && <span className="document-state-lock">Locked</span>}
+                      </div>
+                      {isPlaying && playingAudioUrl && (
+                        <audio className="audio-card-player" src={playingAudioUrl} controls autoPlay style={{ marginTop: '0.5rem' }} />
+                      )}
+                    </div>
+                    <div className="video-card-actions">
+                      <button className="btn-secondary btn-sm" onClick={() => handleAudioPlay(a)}>
+                        <Play size={14} /> {isPlaying ? 'Hide Player' : 'Play'}
+                      </button>
+                      <button className="btn-secondary btn-sm" onClick={() => openAudioConversation(a)}>
+                        <MessageCircle size={14} /> Conversation
+                      </button>
+                      <button className="btn-secondary btn-sm" onClick={() => handleAudioDownload(a)}>
+                        <Download size={14} /> Download
+                      </button>
+                      <button className="btn-danger btn-sm" onClick={() => handleAudioDelete(a)}>
+                        <Trash2 size={14} /> Delete
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="documents-pagination">
+            <div className="pagination-left">
+              <button type="button" className="btn-secondary" disabled={audioPage <= 1} onClick={() => setAudioPage(1)}>First</button>
+              <button type="button" className="btn-secondary" disabled={audioPage <= 1} onClick={() => setAudioPage(p => Math.max(1, p - 1))}>Previous</button>
+            </div>
+            <div className="pagination-center">
+              <div className="pagination-pages" role="group" aria-label="Audio pages">
+                {getVisiblePages(audioPage, audioTotalPages).map((pageNumber) => (
+                  <button
+                    key={`audio-page-${pageNumber}`}
+                    type="button"
+                    className={`btn-secondary pagination-page-btn ${pageNumber === audioPage ? 'active' : ''}`}
+                    onClick={() => setAudioPage(pageNumber)}
+                  >
+                    {pageNumber}
+                  </button>
+                ))}
+              </div>
+              <span className="pagination-info">Page {audioPage} of {audioTotalPages} • {audioTotal} total audio clips</span>
+            </div>
+            <div className="pagination-right">
+              <div className="pagination-jump">
+                <label htmlFor="audio-page-jump">Go to</label>
+                <input
+                  id="audio-page-jump"
+                  type="number"
+                  min="1"
+                  max={audioTotalPages}
+                  value={audioPageInput}
+                  onChange={(event) => setAudioPageInput(event.target.value)}
+                  disabled={audioTotalPages <= 1}
+                />
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  disabled={audioTotalPages <= 1}
+                  onClick={() => {
+                    const parsed = Number(audioPageInput);
+                    if (!Number.isFinite(parsed)) return;
+                    const safePage = Math.min(audioTotalPages, Math.max(1, Math.trunc(parsed)));
+                    setAudioPage(safePage);
+                  }}
+                >
+                  Go
+                </button>
+              </div>
+              <button type="button" className="btn-secondary" disabled={audioPage >= audioTotalPages} onClick={() => setAudioPage(p => Math.min(audioTotalPages, p + 1))}>Next</button>
+              <button type="button" className="btn-secondary" disabled={audioPage >= audioTotalPages} onClick={() => setAudioPage(audioTotalPages)}>Last</button>
             </div>
           </div>
         </>
@@ -1581,6 +1961,107 @@ const Documents = () => {
         </div>
       )}
 
+      {/* ══════════════════════════════ AUDIO UPLOAD MODAL ══════════════════ */}
+      {showAudioModal && (
+        <div className="modal-overlay" onClick={() => !audioUploading && setShowAudioModal(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Add Audio</h2>
+              <button className="close-btn" onClick={() => setShowAudioModal(false)} disabled={audioUploading}><X size={24} /></button>
+            </div>
+            <div className="modal-body">
+              <div className="docs-tab-bar" style={{ marginBottom: '1rem' }}>
+                <button
+                  type="button"
+                  className={`docs-tab ${audioUploadMode === 'record' ? 'active' : ''}`}
+                  onClick={() => setAudioUploadMode('record')}
+                  disabled={audioUploading}
+                >
+                  <Mic size={16} /> Record
+                </button>
+                <button
+                  type="button"
+                  className={`docs-tab ${audioUploadMode === 'upload' ? 'active' : ''}`}
+                  onClick={() => setAudioUploadMode('upload')}
+                  disabled={audioUploading}
+                >
+                  <Upload size={16} /> Upload File
+                </button>
+              </div>
+
+              {audioUploadMode === 'record' ? (
+                <AudioRecorder
+                  disabled={audioUploading}
+                  onRecordingReady={(blob, duration) => {
+                    setRecordedAudioBlob(blob);
+                    setRecordedAudioDuration(duration);
+                  }}
+                />
+              ) : (
+                <>
+                  <div {...getAudioRootProps()} className={`dropzone ${isAudioDragActive ? 'active' : ''}`}>
+                    <input {...getAudioInputProps()} />
+                    <Music size={48} />
+                    <p className="dropzone-text">{isAudioDragActive ? 'Drop audio file here…' : 'Drag & drop an audio file, or click to select'}</p>
+                    <p className="dropzone-hint">MP3, WAV, M4A, AAC, OGG, WebM, FLAC — max 150 MB</p>
+                  </div>
+                  {audioUploadFile && (
+                    <p style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: 'var(--gray-600)' }}>
+                      Selected: {audioUploadFile.name} — {(audioUploadFile.size / 1024 / 1024).toFixed(2)} MB
+                    </p>
+                  )}
+                </>
+              )}
+
+              <div className="metadata-form" style={{ marginTop: '1rem' }}>
+                <div className="form-group">
+                  <label>Workspace</label>
+                  <select value={selectedWorkspaceId} onChange={(e) => setSelectedWorkspaceId(e.target.value)} disabled={audioUploading}>
+                    <option value="">No workspace</option>
+                    {workspaces.map((workspace) => (
+                      <option key={workspace._id} value={workspace._id}>
+                        {workspace.name} {workspace.status === 'archived' ? '(Archived)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Title</label>
+                  <input type="text" value={audioMetadata.title} onChange={e => setAudioMetadata(p => ({ ...p, title: e.target.value }))} placeholder="Audio clip title (optional)" disabled={audioUploading} />
+                </div>
+                <div className="form-group">
+                  <label>Description</label>
+                  <textarea value={audioMetadata.description} onChange={e => setAudioMetadata(p => ({ ...p, description: e.target.value }))} placeholder="Optional description" rows="2" disabled={audioUploading} />
+                </div>
+                <div className="form-group">
+                  <label>Category</label>
+                  <select value={audioMetadata.category} onChange={e => setAudioMetadata(p => ({ ...p, category: e.target.value }))} disabled={audioUploading}>
+                    {DOCUMENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {audioUploading && (
+                <div className="upload-progress">
+                  <div className="progress-bar"><div className="progress-fill" style={{ width: `${audioUploadProgress}%` }} /></div>
+                  <p>Uploading… {audioUploadProgress}%</p>
+                </div>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button className="btn-secondary" onClick={() => setShowAudioModal(false)} disabled={audioUploading}>Cancel</button>
+              <button
+                className="btn-primary"
+                onClick={handleAudioUpload}
+                disabled={audioUploading || (audioUploadMode === 'record' ? !recordedAudioBlob : !audioUploadFile)}
+              >
+                {audioUploading ? 'Uploading…' : 'Upload'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ══════════════════════════════ SHARE MODAL ════════════════════════ */}
       {showShareModal && shareTargetDocument && (
         <div className="modal-overlay" onClick={() => setShowShareModal(false)}>
@@ -1709,6 +2190,63 @@ const Documents = () => {
               <Comments
                 resourceType="video"
                 resourceId={sidebarVideo._id || sidebarVideo.id}
+                onClose={closeSidebar}
+              />
+            </div>
+          </aside>
+        </div>
+      )}
+
+      {sidebarAudio && (
+        <div className="document-sidebar-overlay" onClick={closeSidebar}>
+          <aside className="document-sidebar" onClick={(event) => event.stopPropagation()}>
+            <div className="document-sidebar-header">
+              <div>
+                <p className="document-sidebar-eyebrow">Audio Conversation</p>
+                <h2>{sidebarAudio.title || sidebarAudio.fileName || 'Audio clip'}</h2>
+                <p className="document-sidebar-meta">
+                  {(sidebarAudio.fileExtension || 'AUDIO').toString().toUpperCase()} • {formatFileSize(sidebarAudio.fileSize || 0)} • {sidebarAudio.durationLabel || formatDuration(sidebarAudio.duration)}
+                </p>
+              </div>
+              <button className="close-btn" onClick={closeSidebar}>
+                <X size={24} />
+              </button>
+            </div>
+            <div className="document-sidebar-body">
+              <div className="document-sidebar-card">
+                <strong>{sidebarAudio.title || sidebarAudio.fileName || 'Audio clip'}</strong>
+                <p>{sidebarAudio.description || 'No description provided.'}</p>
+                <small>Use this panel to discuss updates and decisions for this audio clip.</small>
+              </div>
+              <div className="document-sidebar-card document-sidebar-card--compact">
+                <div className="sidebar-state-header">
+                  <strong>Lifecycle State</strong>
+                  <span className={`document-state-badge tone-${getLifecycleTone(sidebarAudio.lifecycleState)}`}>
+                    {formatLifecycleState(sidebarAudio.lifecycleState)}
+                  </span>
+                </div>
+                <div className="sidebar-state-controls">
+                  <select
+                    value={sidebarAudio.lifecycleState || 'STARTED'}
+                    onChange={(event) => setSidebarAudio((prev) => ({ ...prev, lifecycleState: event.target.value }))}
+                  >
+                    {LIFECYCLE_STATES.map((state) => (
+                      <option key={state} value={state}>{formatLifecycleState(state)}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() => updateLifecycleState('audio', sidebarAudio, sidebarAudio.lifecycleState || 'STARTED')}
+                  >
+                    Save State
+                  </button>
+                </div>
+                <p className="sidebar-state-note">Lifecycle changes are logged automatically for reporting and audit trails.</p>
+              </div>
+              <Comments
+                resourceType="audio"
+                resourceId={sidebarAudio._id || sidebarAudio.id}
                 onClose={closeSidebar}
               />
             </div>

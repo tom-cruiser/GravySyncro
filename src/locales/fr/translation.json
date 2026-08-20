@@ -222,9 +222,9 @@
     },
     "hero": {
       "eyebrow": "Operations documentaires de niveau entreprise",
-      "title": "Pilotez vos documents en toute confiance",
-      "description": "GravySyncro unifie archivage securise, collaboration structuree et gouvernance administrative dans un espace controle. Chaque action sur les documents est tracable, geree par roles et synchronisee en temps reel.",
-      "primaryCta": "Demarrer en securite",
+      "title": "Archivez en securite. Collaborez a l'instant.",
+      "description": "GravySyncro est l'espace de travail SaaS tout-en-un pour les equipes modernes qui veulent stocker leurs documents critiques en toute securite tout en editant et en echangeant des idees en temps reel.",
+      "primaryCta": "Demarrer votre essai gratuit",
       "secondaryCta": "Parler a notre equipe",
       "points": {
         "one": "Controle multi-tenant avec acces par roles",
@@ -255,45 +255,46 @@
       }
     },
     "features": {
-      "eyebrow": "Dernieres capacites",
-      "title": "Une couche operationnelle unifiee pour vos equipes documentaires",
-      "description": "GravySyncro combine desormais collaboration, administration et controles de compte dans un environnement unique et fiable pour les operations d'entreprise.",
+      "eyebrow": "Fonctionnalites principales",
+      "title": "Tout ce dont votre equipe a besoin, en un seul espace",
+      "description": "GravySyncro reunit archivage, collaboration en direct et synchronisation pour que votre equipe n'ait plus a jongler entre plusieurs outils.",
       "cards": {
-        "messaging": {
-          "title": "Messagerie Support",
-          "description": "Soumettez des demandes de support, suivez leur cycle de traitement et recevez les reponses administrateur directement dans la plateforme."
+        "archiving": {
+          "title": "Archivage sans effort",
+          "description": "Ne perdez plus jamais un fichier. Conservez vos donnees historiques en securite, consultables et bien organisees."
         },
-        "versioning": {
-          "title": "Historique des Versions",
-          "description": "Conservez une chronologie complete des modifications, consultez les versions precedentes et assurez une responsabilite totale des editions."
+        "collaboration": {
+          "title": "Collaboration en direct",
+          "description": "Modifiez, commentez et enrichissez vos documents simultanement, sans aucun delai."
         },
-        "admin": {
-          "title": "Centre de Controle Admin",
-          "description": "Supervisez utilisateurs, tenants, notifications et journaux d'activite depuis un tableau de bord operationnel consolide."
-        },
-        "profile": {
-          "title": "Profil et Securite",
-          "description": "Gerez vos informations d'identite, votre contexte organisationnel et la securite des identifiants depuis un espace profil dedie."
-        },
-        "billing": {
-          "title": "Facturation et Plans",
-          "description": "Controlez abonnements, niveaux de stockage et visibilite de facturation pour une croissance maitrisee."
-        },
-        "workspace": {
-          "title": "Espaces de Travail Structures",
-          "description": "Organisez equipes et fichiers avec des grilles consultables, un regroupement structure et une navigation plus rapide par contexte."
+        "syncing": {
+          "title": "Synchronisation fluide",
+          "description": "Se connecte facilement aux outils que votre equipe utilise deja (comme les notifications Slack)."
         }
       }
     },
     "workflow": {
-      "eyebrow": "Flux operationnel",
-      "title": "Concu pour une execution quotidienne fiable",
-      "description": "Un parcours clair maintient la productivite des equipes tout en preservant controle, tracabilite et securite a chaque etape.",
+      "eyebrow": "Comment ca marche",
+      "title": "Trois etapes simples pour demarrer",
+      "description": "Du televersement a la sauvegarde automatique, GravySyncro securise et organise chaque etape, en parfaite synchronisation.",
       "steps": {
-        "one": "Provisionnez des workspaces multi-tenant, integrez les membres et appliquez les acces par roles des le premier jour.",
-        "two": "Televersez, partagez et collaborez sur les documents avec commentaires, suivi des versions et notifications en temps reel.",
-        "three": "Exploitez insights administratifs, journaux d'audit et controles de facturation pour maintenir la gouvernance avec la croissance."
+        "one": {
+          "title": "Televersez et organisez",
+          "description": "vos fichiers dans des coffres securises."
+        },
+        "two": {
+          "title": "Invitez votre equipe",
+          "description": "avec des permissions personnalisees par role."
+        },
+        "three": {
+          "title": "Travaillez, sauvegarde automatique",
+          "description": "pendant que le systeme archive et versionne les modifications en arriere-plan."
+        }
       }
+    },
+    "finalCta": {
+      "title": "Prets a donner vie aux documents de votre equipe ?",
+      "button": "Commencer gratuitement"
     },
     "stats": {
       "items": {
@@ -315,17 +316,20 @@
       "eyebrow": "Contact",
       "title": "Pret a deployer GravySyncro a l'echelle de votre equipe ?",
       "description": "Contactez-nous pour planifier votre deploiement, aligner les exigences de securite et lancer en toute confiance.",
-      "cards": {
-        "email": {
-          "title": "Email"
-        },
-        "phone": {
-          "title": "Telephone"
-        },
-        "location": {
-          "title": "Localisation",
-          "value": "Bujumbura, Burundi"
-        }
+      "form": {
+        "emailLabel": "Email",
+        "emailPlaceholder": "vous@entreprise.com",
+        "phoneLabel": "Telephone",
+        "phonePlaceholder": "61 676 947",
+        "countryCodeLabel": "Indicatif du pays",
+        "subjectLabel": "Sujet",
+        "subjectPlaceholder": "Comment pouvons-nous vous aider ?",
+        "messageLabel": "Message",
+        "messagePlaceholder": "Dites-nous en un peu plus...",
+        "submit": "Envoyer le message",
+        "sending": "Envoi en cours...",
+        "successMessage": "Merci de nous avoir contactes — nous reviendrons vers vous rapidement.",
+        "errorMessage": "Une erreur est survenue. Veuillez reessayer."
       }
     }
   },

@@ -2,14 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { 
-  Mail, 
-  Lock, 
-  ShieldCheck, 
-  AlertCircle, 
-  Loader2, 
-  Eye, 
+import {
+  Mail,
+  Lock,
+  ShieldCheck,
+  AlertCircle,
+  Loader2,
+  Eye,
   EyeOff,
+  ArrowLeft,
   ArrowRight,
   CheckCircle2,
   Sparkles,
@@ -106,6 +107,10 @@ const Login = () => {
 
   return (
     <div className="auth-container">
+      <Link to="/" className="auth-back-link">
+        <ArrowLeft size={16} />
+        Back to home
+      </Link>
       <div className="noise-overlay" aria-hidden="true" />
       <div className="gradient-orb gradient-orb-1" />
       <div className="gradient-orb gradient-orb-2" />

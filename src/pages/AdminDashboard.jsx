@@ -12,6 +12,7 @@ import {
   Building2,
   HeartPulse,
   MessageCircle,
+  Globe,
   Download,
   Filter,
 } from 'lucide-react';
@@ -173,6 +174,13 @@ const AdminDashboard = () => {
           Messages
         </button>
         <button
+          className={`admin-tab ${activeTab === 'contactMessages' ? 'active' : ''}`}
+          onClick={() => setActiveTab('contactMessages')}
+        >
+          <Globe size={18} />
+          Contact Messages
+        </button>
+        <button
           className={`admin-tab ${activeTab === 'documents' ? 'active' : ''}`}
           onClick={() => setActiveTab('documents')}
         >
@@ -294,7 +302,13 @@ const AdminDashboard = () => {
 
       {activeTab === 'messages' && (
         <div className="admin-tab-content">
-          <AdminMessages />
+          <AdminMessages source="app" title="Support Messages" />
+        </div>
+      )}
+
+      {activeTab === 'contactMessages' && (
+        <div className="admin-tab-content">
+          <AdminMessages source="public_contact_form" title="Contact Messages" />
         </div>
       )}
 

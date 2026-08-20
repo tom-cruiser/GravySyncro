@@ -1,0 +1,101 @@
+/* Deliberately namespaced (terms-modal-*, not the generic .modal/
+   .modal-overlay several other files in this app already use
+   unscoped) — this codebase has already hit real bugs from identically
+   named classes across different CSS files bleeding into each other. */
+.terms-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: rgba(28, 27, 46, 0.56);
+  backdrop-filter: blur(2px);
+}
+
+.terms-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1201;
+  width: min(560px, 92vw);
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--auth-white, #fffdf8);
+  border-radius: 20px;
+  border: 1px solid var(--auth-border, rgba(28, 27, 46, 0.1));
+  box-shadow: 0 30px 70px rgba(2, 6, 23, 0.35);
+  overflow: hidden;
+}
+
+.terms-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--auth-border-soft, rgba(28, 27, 46, 0.06));
+  flex-shrink: 0;
+}
+
+.terms-modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--auth-ink, #1c1b2e);
+}
+
+.terms-modal-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--auth-muted, #55536e);
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.terms-modal-close:hover {
+  background: var(--auth-cream, #faf6ec);
+  color: var(--auth-ink, #1c1b2e);
+}
+
+.terms-modal-body {
+  padding: 20px 22px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.terms-modal-footer {
+  padding: 14px 22px;
+  border-top: 1px solid var(--auth-border-soft, rgba(28, 27, 46, 0.06));
+  display: flex;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+.terms-modal-close-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 999px;
+  background: var(--auth-c1, #1c1b2e);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.terms-modal-close-btn:hover {
+  opacity: 0.88;
+}
+
+@media (max-width: 480px) {
+  .terms-modal {
+    width: 94vw;
+    max-height: 90vh;
+  }
+}

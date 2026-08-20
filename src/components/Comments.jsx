@@ -184,15 +184,18 @@ const Comments = ({
 
   const targetId = resourceId || documentId;
   const isVideo = resourceType === 'video';
+  const isAudio = resourceType === 'audio';
 
   const loadComments = useCallback(async () => {
     if (!targetId || !token) return;
 
     setLoading(true);
     try {
-      const url = isVideo
-        ? api.endpoints.comments.listVideo(targetId)
-        : api.endpoints.comments.list(targetId);
+      const url = isAudio
+        ? api.endpoints.comments.listAudio(targetId)
+        : isVideo
+          ? api.endpoints.comments.listVideo(targetId)
+          : api.endpoints.comments.list(targetId);
       const response = await axios.get(url, authHeaders);
       setComments(response.data?.data?.comments || []);
     } catch (error) {
@@ -204,7 +207,7 @@ const Comments = ({
     } finally {
       setLoading(false);
     }
-  }, [targetId, token, isVideo, authHeaders, dispatch, navigate]);
+  }, [targetId, token, isVideo, isAudio, authHeaders, dispatch, navigate]);
 
   useEffect(() => {
     loadComments();
@@ -244,9 +247,11 @@ const Comments = ({
     if (!text.trim() || !targetId) return;
 
     try {
-      const url = isVideo
-        ? api.endpoints.comments.createVideo(targetId)
-        : api.endpoints.comments.create(targetId);
+      const url = isAudio
+        ? api.endpoints.comments.createAudio(targetId)
+        : isVideo
+          ? api.endpoints.comments.createVideo(targetId)
+          : api.endpoints.comments.create(targetId);
       await axios.post(
         url,
         parentId ? { text, parentId } : { text },

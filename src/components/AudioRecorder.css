@@ -1,0 +1,102 @@
+.audio-recorder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 24px;
+  border: 1px dashed var(--gray-300);
+  border-radius: var(--radius-lg);
+  background: var(--gray-50);
+}
+
+.audio-recorder-error {
+  color: var(--danger);
+  font-size: 13px;
+  text-align: center;
+  margin: 0;
+}
+
+.audio-recorder-timer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 28px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--gray-800);
+}
+
+.audio-recorder-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--gray-400);
+}
+
+.audio-recorder-dot.live {
+  background: var(--danger);
+  animation: audio-recorder-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes audio-recorder-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.audio-recorder-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.audio-recorder-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  border: 2px solid var(--gray-300);
+  background: white;
+  color: var(--gray-700);
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.audio-recorder-btn:hover:not(:disabled) {
+  background: var(--gray-100);
+}
+
+.audio-recorder-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.audio-recorder-btn.primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+
+.audio-recorder-btn.danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: white;
+}
+
+.audio-recorder-preview {
+  width: 100%;
+  max-width: 320px;
+}
+
+@media (max-width: 480px) {
+  .audio-recorder {
+    padding: 16px;
+  }
+
+  .audio-recorder-timer {
+    font-size: 22px;
+  }
+}

@@ -532,6 +532,13 @@
 
 .video-card-meta { font-size: 0.8rem; color: var(--gray-500); }
 
+.audio-card-source { color: var(--primary); font-weight: 600; }
+
+.audio-card-player {
+  width: 100%;
+  height: 32px;
+}
+
 .video-card-hash {
   font-size: 0.72rem;
   color: var(--gray-400);

@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, Link } from 'react-router-dom';
-import { Mail, Lock, User, Briefcase, Hash, AlertCircle, Loader2, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, User, Briefcase, Hash, AlertCircle, Loader2, Eye, EyeOff, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { registerStart, registerSuccess, registerFailure, clearError } from '../features/auth/authSlice';
 import api from '../config/api';
 import LanguageSelector from '../components/LanguageSelector';
+import TermsModal from '../components/TermsModal';
 import './Auth.css';
 
 const PASSWORD_RE = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
@@ -18,12 +19,14 @@ const Register = () => {
     password: '',
     confirmPassword: '',
     role: 'Student',
+    acceptTerms: false,
   });
   const [showPassword, setShowPassword]        = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [clientError, setClientError]          = useState('');
   const [capsLockPassword, setCapsLockPassword] = useState(false);
   const [capsLockConfirmPassword, setCapsLockConfirmPassword] = useState(false);
+  const [showTermsModal, setShowTermsModal]    = useState(false);
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -36,9 +39,10 @@ const Register = () => {
   };
 
   const handleChange = (e) => {
+    const { name, type, value, checked } = e.target;
     setClientError('');
     dispatch(clearError());
-    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   };
 
   const handleSubmit = async (e) => {
@@ -52,6 +56,14 @@ const Register = () => {
     }
     if (!PASSWORD_RE.test(formData.password)) {
       setClientError('Password must be at least 8 characters and include uppercase, lowercase, and a number.');
+      return;
+    }
+    // Belt-and-suspenders: the submit button is already disabled until
+    // this is checked (see registerReady below), but a defensive check
+    // here means a re-enabled/re-submitted form can't slip through, and
+    // the backend enforces the same rule again server-side regardless.
+    if (!formData.acceptTerms) {
+      setClientError('You must agree to the Terms of Service to create an account.');
       return;
     }
 
@@ -68,6 +80,7 @@ const Register = () => {
           tenantId: formData.tenantId?.trim() || undefined,
           password: formData.password,
           role: formData.role,
+          termsAccepted: formData.acceptTerms,
         }),
       });
 
@@ -113,10 +126,15 @@ const Register = () => {
     && formData.password.length > 0
     && formData.confirmPassword.length > 0
     && formData.password === formData.confirmPassword
-    && PASSWORD_RE.test(formData.password);
+    && PASSWORD_RE.test(formData.password)
+    && formData.acceptTerms;
 
   return (
     <div className="auth-container">
+      <Link to="/" className="auth-back-link">
+        <ArrowLeft size={16} />
+        Back to home
+      </Link>
       <div className="noise-overlay" aria-hidden="true" />
       <div className="gradient-orb gradient-orb-1" />
       <div className="gradient-orb gradient-orb-2" />
@@ -354,6 +372,32 @@ const Register = () => {
             )}
           </div>
 
+          {/* Terms of Service agreement — required before the submit
+              button below will enable (see registerReady above), and
+              enforced again server-side regardless. */}
+          <div className="form-group checkbox-group">
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                name="acceptTerms"
+                checked={formData.acceptTerms}
+                onChange={handleChange}
+                disabled={isLoading}
+              />
+              <span className="checkmark">
+                <CheckCircle2 size={14} />
+              </span>
+              I agree to the{' '}
+              <button
+                type="button"
+                className="link-inline terms-inline-link"
+                onClick={() => setShowTermsModal(true)}
+              >
+                Terms of Service
+              </button>
+            </label>
+          </div>
+
           <button type="submit" className="btn-primary btn-active" disabled={isLoading || !registerReady}>
             {isLoading
               ? <><Loader2 size={16} className="spin" /> Creating Account…</>
@@ -367,6 +411,10 @@ const Register = () => {
           </div>
         </form>
       </div>
+
+      {showTermsModal && (
+        <TermsModal onClose={() => setShowTermsModal(false)} />
+      )}
     </div>
   );
 };

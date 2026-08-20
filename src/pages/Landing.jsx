@@ -1,28 +1,62 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import axios from "axios";
 import {
   ShieldCheck,
-  Lock,
   Layers,
   BellRing,
-  MessageSquareText,
-  History,
-  Gauge,
-  UserRound,
-  CreditCard,
-  FolderKanban,
+  Archive,
+  RefreshCw,
   Mail,
   Phone,
-  MapPin,
   ArrowRight,
   CheckCircle2,
+  AlertCircle,
+  Loader2,
+  Send,
 } from "lucide-react";
 import LanguageSelector from "../components/LanguageSelector";
+import CountryCodeSelect from "../components/CountryCodeSelect";
+import api from "../config/api";
+import { countryCodes } from "../data/countryCodes";
 import "./Landing.css";
 
 const Landing = () => {
   const { t } = useTranslation();
+
+  const [contactForm, setContactForm] = useState({
+    email: "",
+    countryCode: "+257",
+    phoneNumber: "",
+    subject: "",
+    message: "",
+  });
+  const [contactStatus, setContactStatus] = useState("idle"); // idle | sending | success | error
+  const [contactError, setContactError] = useState("");
+
+  const handleContactChange = (event) => {
+    const { name, value } = event.target;
+    setContactForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleContactSubmit = async (event) => {
+    event.preventDefault();
+    setContactStatus("sending");
+    setContactError("");
+
+    try {
+      await axios.post(api.endpoints.messages.publicContact(), contactForm);
+      setContactStatus("success");
+      setContactForm({ email: "", countryCode: "+257", phoneNumber: "", subject: "", message: "" });
+    } catch (error) {
+      console.error("Failed to send contact message:", error);
+      const validationErrors = error?.response?.data?.errors;
+      const serverMessage = validationErrors?.[0]?.message || error?.response?.data?.message;
+      setContactError(serverMessage || "Something went wrong. Please try again.");
+      setContactStatus("error");
+    }
+  };
 
   useEffect(() => {
     const revealItems = globalThis.document.querySelectorAll(".reveal");
@@ -81,53 +115,38 @@ const Landing = () => {
 
   const featureCards = [
     {
-      icon: Lock,
-      title: t("landing.panel.items.security"),
-      description: t("landing.explain.app.description"),
-      className: "feature-card feature-large",
-    },
-    {
-      icon: MessageSquareText,
-      title: t("landing.features.cards.messaging.title"),
-      description: t("landing.features.cards.messaging.description"),
+      icon: Archive,
+      title: t("landing.features.cards.archiving.title"),
+      description: t("landing.features.cards.archiving.description"),
       className: "feature-card",
     },
     {
-      icon: History,
-      title: t("landing.features.cards.versioning.title"),
-      description: t("landing.features.cards.versioning.description"),
+      icon: Layers,
+      title: t("landing.features.cards.collaboration.title"),
+      description: t("landing.features.cards.collaboration.description"),
       className: "feature-card",
     },
     {
-      icon: Gauge,
-      title: t("landing.features.cards.admin.title"),
-      description: t("landing.features.cards.admin.description"),
-      className: "feature-card",
-    },
-    {
-      icon: UserRound,
-      title: t("landing.features.cards.profile.title"),
-      description: t("landing.features.cards.profile.description"),
-      className: "feature-card",
-    },
-    {
-      icon: CreditCard,
-      title: t("landing.features.cards.billing.title"),
-      description: t("landing.features.cards.billing.description"),
-      className: "feature-card",
-    },
-    {
-      icon: FolderKanban,
-      title: t("landing.features.cards.workspace.title"),
-      description: t("landing.features.cards.workspace.description"),
+      icon: RefreshCw,
+      title: t("landing.features.cards.syncing.title"),
+      description: t("landing.features.cards.syncing.description"),
       className: "feature-card",
     },
   ];
 
   const workflowSteps = [
-    t("landing.workflow.steps.one"),
-    t("landing.workflow.steps.two"),
-    t("landing.workflow.steps.three"),
+    {
+      title: t("landing.workflow.steps.one.title"),
+      description: t("landing.workflow.steps.one.description"),
+    },
+    {
+      title: t("landing.workflow.steps.two.title"),
+      description: t("landing.workflow.steps.two.description"),
+    },
+    {
+      title: t("landing.workflow.steps.three.title"),
+      description: t("landing.workflow.steps.three.description"),
+    },
   ];
 
   const trustStats = [
@@ -189,7 +208,7 @@ const Landing = () => {
           <p className="hero-copy">{t("landing.hero.description")}</p>
           <div className="hero-actions">
             <Link
-              to="/login"
+              to="/register"
               className="btn-primary hero-btn magnetic cta-priority"
               onMouseMove={handleMagneticMove}
               onMouseLeave={handleMagneticLeave}
@@ -290,11 +309,27 @@ const Landing = () => {
         </div>
         <div className="workflow-steps">
           {workflowSteps.map((step, index) => (
-            <article key={step} className="workflow-step reveal">
+            <article key={step.title} className="workflow-step reveal">
               <span className="step-number">0{index + 1}</span>
-              <p>{step}</p>
+              <p>
+                <strong>{step.title}</strong> {step.description}
+              </p>
             </article>
           ))}
+        </div>
+      </section>
+
+      <section className="final-cta-section section-shell reveal">
+        <div className="final-cta-inner">
+          <h2>{t("landing.finalCta.title")}</h2>
+          <Link
+            to="/register"
+            className="btn-primary final-cta-btn magnetic cta-priority"
+            onMouseMove={handleMagneticMove}
+            onMouseLeave={handleMagneticLeave}
+          >
+            {t("landing.finalCta.button")} <ArrowRight size={18} />
+          </Link>
         </div>
       </section>
 
@@ -304,29 +339,118 @@ const Landing = () => {
           <h2>{t("landing.contact.title")}</h2>
           <p>{t("landing.contact.description")}</p>
         </div>
-        <div className="contact-cards">
-          <a className="contact-card" href="mailto:info@gravy.africa">
-            <Mail size={20} />
-            <div>
-              <h4>{t("landing.contact.cards.email.title")}</h4>
-              <p>info@gravy.africa</p>
+
+        <form className="contact-form" onSubmit={handleContactSubmit} noValidate>
+          {contactStatus === "success" && (
+            <div className="contact-form-banner contact-form-success">
+              <CheckCircle2 size={16} />
+              <span>{t("landing.contact.form.successMessage")}</span>
             </div>
-          </a>
-          <a className="contact-card" href="tel:+25761676947">
-            <Phone size={20} />
-            <div>
-              <h4>{t("landing.contact.cards.phone.title")}</h4>
-              <p>+257 616 769 47</p>
+          )}
+          {contactStatus === "error" && (
+            <div className="contact-form-banner contact-form-error">
+              <AlertCircle size={16} />
+              <span>{contactError}</span>
             </div>
-          </a>
-          <div className="contact-card">
-            <MapPin size={20} />
-            <div>
-              <h4>{t("landing.contact.cards.location.title")}</h4>
-              <p>{t("landing.contact.cards.location.value")}</p>
+          )}
+
+          <div className="contact-form-row">
+            <div className="contact-form-field">
+              <label htmlFor="contact-email">{t("landing.contact.form.emailLabel")}</label>
+              <div className="contact-input-wrap">
+                <Mail
+                  size={16}
+                  className={`contact-input-icon ${contactForm.email ? "contact-input-icon-hidden" : ""}`}
+                />
+                <input
+                  id="contact-email"
+                  type="email"
+                  name="email"
+                  required
+                  autoComplete="email"
+                  value={contactForm.email}
+                  onChange={handleContactChange}
+                  disabled={contactStatus === "sending"}
+                />
+              </div>
+            </div>
+
+            <div className="contact-form-field">
+              <label htmlFor="contact-phone">{t("landing.contact.form.phoneLabel")}</label>
+              <div className="contact-phone-wrap">
+                <CountryCodeSelect
+                  countries={countryCodes}
+                  value={contactForm.countryCode}
+                  onChange={(dial) => setContactForm((prev) => ({ ...prev, countryCode: dial }))}
+                  disabled={contactStatus === "sending"}
+                  label={t("landing.contact.form.countryCodeLabel")}
+                />
+                <div className="contact-input-wrap contact-phone-number">
+                  <Phone
+                    size={16}
+                    className={`contact-input-icon ${contactForm.phoneNumber ? "contact-input-icon-hidden" : ""}`}
+                  />
+                  <input
+                    id="contact-phone"
+                    type="tel"
+                    name="phoneNumber"
+                    required
+                    autoComplete="tel-national"
+                    value={contactForm.phoneNumber}
+                    onChange={handleContactChange}
+                    disabled={contactStatus === "sending"}
+                  />
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+
+          <div className="contact-form-field">
+            <label htmlFor="contact-subject">{t("landing.contact.form.subjectLabel")}</label>
+            <input
+              id="contact-subject"
+              type="text"
+              name="subject"
+              required
+              placeholder={t("landing.contact.form.subjectPlaceholder")}
+              value={contactForm.subject}
+              onChange={handleContactChange}
+              disabled={contactStatus === "sending"}
+            />
+          </div>
+
+          <div className="contact-form-field">
+            <label htmlFor="contact-message">{t("landing.contact.form.messageLabel")}</label>
+            <textarea
+              id="contact-message"
+              name="message"
+              required
+              rows={4}
+              placeholder={t("landing.contact.form.messagePlaceholder")}
+              value={contactForm.message}
+              onChange={handleContactChange}
+              disabled={contactStatus === "sending"}
+            />
+          </div>
+
+          <button
+            type="submit"
+            className="btn-primary contact-submit-btn magnetic"
+            disabled={contactStatus === "sending"}
+            onMouseMove={handleMagneticMove}
+            onMouseLeave={handleMagneticLeave}
+          >
+            {contactStatus === "sending" ? (
+              <>
+                <Loader2 size={16} className="contact-spin" /> {t("landing.contact.form.sending")}
+              </>
+            ) : (
+              <>
+                {t("landing.contact.form.submit")} <Send size={16} />
+              </>
+            )}
+          </button>
+        </form>
       </section>
     </div>
   );
