@@ -6,6 +6,7 @@ import { registerStart, registerSuccess, registerFailure, clearError } from '../
 import api from '../config/api';
 import LanguageSelector from '../components/LanguageSelector';
 import TermsModal from '../components/TermsModal';
+import GoogleAuthButton from '../components/GoogleAuthButton';
 import './Auth.css';
 
 const PASSWORD_RE = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
@@ -404,6 +405,12 @@ const Register = () => {
               : 'Create Account'
             }
           </button>
+
+          <div className="divider">
+            <span>or continue with</span>
+          </div>
+
+          <GoogleAuthButton termsAccepted={formData.acceptTerms} />
 
           <div className="auth-links">
             <span>Already have an account?</span>

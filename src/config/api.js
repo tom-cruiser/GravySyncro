@@ -13,6 +13,7 @@ export default {
     auth: {
       login: () => getApiUrl('/auth/login'),
       register: () => getApiUrl('/auth/register'),
+      google: () => getApiUrl('/auth/google'),
       forgotPassword: () => getApiUrl('/auth/forgot-password'),
       resetPassword: () => getApiUrl('/auth/reset-password'),
       changePassword: () => getApiUrl('/auth/change-password'),
