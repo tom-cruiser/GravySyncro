@@ -31,8 +31,8 @@ import AudioRecorder from '../components/AudioRecorder';
 import './Documents.css';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const MAX_DOC_FILES = 100;
-const MAX_DOC_SIZE = 157286400; // 150 MB
+const MAX_DOC_FILES = 150;
+const MAX_DOC_SIZE = 262144000; // 250 MB
 
 const MAX_VIDEO_SIZE = 1.5 * 1024 * 1024 * 1024; // 1.5 GB
 const MAX_CONCURRENT_VIDEO_UPLOADS = 3;
@@ -73,7 +73,7 @@ const VIDEO_ACCEPT_MIME = {
   'video/mpeg': ['.mpeg', '.mpg'],
 };
 
-const MAX_AUDIO_SIZE = 157286400; // 150 MB — same single-shot upload cap as documents
+const MAX_AUDIO_SIZE = 157286400; // 150 MB — kept independent of the document upload cap
 const ALLOWED_AUDIO_MIME = new Set([
   'audio/webm', 'audio/ogg', 'audio/mpeg', 'audio/mp3',
   'audio/mp4', 'audio/x-m4a', 'audio/aac', 'audio/wav', 'audio/x-wav', 'audio/flac',
@@ -665,7 +665,7 @@ const Documents = () => {
       valid = valid.slice(0, MAX_DOC_FILES);
     }
     if (rejected.length) dispatch(addNotification({ id: Date.now() + 1, type: 'error', message: `${rejected.length} file(s) skipped: unsupported format.`, read: false, timestamp: new Date().toISOString() }));
-    if (tooLarge.length) dispatch(addNotification({ id: Date.now() + 2, type: 'error', message: `${tooLarge.length} file(s) skipped: exceeds 150 MB.`, read: false, timestamp: new Date().toISOString() }));
+    if (tooLarge.length) dispatch(addNotification({ id: Date.now() + 2, type: 'error', message: `${tooLarge.length} file(s) skipped: exceeds 250 MB.`, read: false, timestamp: new Date().toISOString() }));
 
     setUploadFiles(valid);
     if (valid.length === 1 && !metadata.title) setMetadata(prev => ({ ...prev, title: valid[0].name }));
@@ -1777,7 +1777,7 @@ const Documents = () => {
                 <input {...getInputProps()} />
                 <Upload size={48} />
                 <p className="dropzone-text">{isDragActive ? 'Drop files here…' : 'Drag & drop files, or click to select'}</p>
-                <p className="dropzone-hint">PDF, Word, Excel, Images, ZIP — max 100 files, 150 MB each</p>
+                <p className="dropzone-hint">PDF, Word, Excel, Images, ZIP — max 150 files, 250 MB each</p>
               </div>
 
               <div style={{ marginTop: '0.75rem', display: 'flex', justifyContent: 'center' }}>
