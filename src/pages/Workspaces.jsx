@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -73,6 +73,13 @@ const Workspaces = () => {
   const [inviteRole, setInviteRole] = useState('Contributor');
   const [workspaceSnapshot, setWorkspaceSnapshot] = useState([]);
 
+  // Selected workspace changes often (opening settings/team modals, switching
+  // selection) — read it from a ref inside the socket handler instead of the
+  // effect dependency array, so the connection isn't torn down and
+  // reconnected on every selection change.
+  const selectedWorkspaceRef = useRef(null);
+  selectedWorkspaceRef.current = selectedWorkspace;
+
   useEffect(() => {
     if (!token) return undefined;
 
@@ -89,7 +96,8 @@ const Workspaces = () => {
     socket.on('workspace:deleted', ({ workspaceId }) => {
       setRefreshSignal((value) => value + 1);
 
-      if (workspaceId && selectedWorkspace?._id && String(workspaceId) === String(selectedWorkspace._id)) {
+      const liveSelectedWorkspace = selectedWorkspaceRef.current;
+      if (workspaceId && liveSelectedWorkspace?._id && String(workspaceId) === String(liveSelectedWorkspace._id)) {
         setSelectedWorkspace(null);
         setShowSettingsModal(false);
         setShowTeamModal(false);
@@ -100,7 +108,7 @@ const Workspaces = () => {
     return () => {
       socket.disconnect();
     };
-  }, [token, selectedWorkspace?._id, dispatch]);
+  }, [token, dispatch]);
 
   const authHeaders = { headers: { Authorization: `Bearer ${token}` } };
 

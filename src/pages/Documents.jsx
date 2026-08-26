@@ -31,8 +31,8 @@ import AudioRecorder from '../components/AudioRecorder';
 import './Documents.css';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const MAX_DOC_FILES = 150;
-const MAX_DOC_SIZE = 262144000; // 250 MB
+const MAX_DOC_FILES = 15000;
+const MAX_DOC_SIZE = 734003200; // 700 MB
 
 const MAX_VIDEO_SIZE = 1.5 * 1024 * 1024 * 1024; // 1.5 GB
 const MAX_CONCURRENT_VIDEO_UPLOADS = 3;
@@ -316,6 +316,15 @@ const Documents = () => {
     setAudioPageInput(String(audioPage));
   }, [audioPage]);
 
+  // Socket event handlers below need the latest activeTab/currentPage/
+  // currentWorkspace/sidebarDocument, but the socket connection itself must
+  // NOT be torn down and recreated every time any of those change — that was
+  // causing a disconnect/reconnect on every tab switch, page change, or
+  // sidebar open (i.e. "constant websocket error" during normal use). Keep
+  // the live values in a ref that the handlers read at call time instead.
+  const documentsSocketStateRef = useRef({});
+  documentsSocketStateRef.current = { activeTab, currentPage, currentWorkspace, sidebarDocument };
+
   useEffect(() => {
     if (!token) return undefined;
 
@@ -330,22 +339,25 @@ const Documents = () => {
     });
 
     socket.on('document:deleted', ({ documentId, workspaceId }) => {
-      if (documentId && sidebarDocument && String(documentId) === String(sidebarDocument.id || sidebarDocument._id)) {
-        closeSidebar();
+      const { activeTab: liveTab, currentPage: livePage, currentWorkspace: liveWorkspace, sidebarDocument: liveSidebarDocument, fetchDocuments: liveFetchDocuments, closeSidebar: liveCloseSidebar } = documentsSocketStateRef.current;
+
+      if (documentId && liveSidebarDocument && String(documentId) === String(liveSidebarDocument.id || liveSidebarDocument._id)) {
+        liveCloseSidebar();
       }
 
-      if (currentWorkspace?._id && workspaceId && String(currentWorkspace._id) !== String(workspaceId)) {
+      if (liveWorkspace?._id && workspaceId && String(liveWorkspace._id) !== String(workspaceId)) {
         return;
       }
 
-      if (activeTab === 'files') {
-        fetchDocuments(currentPage);
+      if (liveTab === 'files') {
+        liveFetchDocuments(livePage);
       }
     });
 
     socket.on('workspace:deleted', ({ workspaceId }) => {
-      if (!workspaceId || !currentWorkspace?._id) return;
-      if (String(workspaceId) !== String(currentWorkspace._id)) return;
+      const { currentWorkspace: liveWorkspace } = documentsSocketStateRef.current;
+      if (!workspaceId || !liveWorkspace?._id) return;
+      if (String(workspaceId) !== String(liveWorkspace._id)) return;
 
       dispatch(setCurrentWorkspace(null));
       navigate('/workspaces');
@@ -354,7 +366,7 @@ const Documents = () => {
     return () => {
       socket.disconnect();
     };
-  }, [token, activeTab, currentPage, currentWorkspace?._id, sidebarDocument, dispatch, navigate]);
+  }, [token, dispatch, navigate]);
 
   useEffect(() => {
     if (!token) return;
@@ -665,7 +677,7 @@ const Documents = () => {
       valid = valid.slice(0, MAX_DOC_FILES);
     }
     if (rejected.length) dispatch(addNotification({ id: Date.now() + 1, type: 'error', message: `${rejected.length} file(s) skipped: unsupported format.`, read: false, timestamp: new Date().toISOString() }));
-    if (tooLarge.length) dispatch(addNotification({ id: Date.now() + 2, type: 'error', message: `${tooLarge.length} file(s) skipped: exceeds 250 MB.`, read: false, timestamp: new Date().toISOString() }));
+    if (tooLarge.length) dispatch(addNotification({ id: Date.now() + 2, type: 'error', message: `${tooLarge.length} file(s) skipped: exceeds 700 MB.`, read: false, timestamp: new Date().toISOString() }));
 
     setUploadFiles(valid);
     if (valid.length === 1 && !metadata.title) setMetadata(prev => ({ ...prev, title: valid[0].name }));
@@ -1204,6 +1216,15 @@ const Documents = () => {
     setSidebarAudio(null);
     setSidebarLoading(false);
   };
+
+  // fetchDocuments/closeSidebar close over reactive state (filters, workspace,
+  // etc.) and are redefined every render, so the socket effect (which only
+  // reconnects when `token` changes — see above) can't just call them
+  // directly or it would be stuck calling the very first render's versions.
+  // Refresh the ref here, after both are declared, so it always holds the
+  // latest closures.
+  documentsSocketStateRef.current.fetchDocuments = fetchDocuments;
+  documentsSocketStateRef.current.closeSidebar = closeSidebar;
 
   const handleLightboxAuthError = () => {
     dispatch(logout());
@@ -1777,7 +1798,7 @@ const Documents = () => {
                 <input {...getInputProps()} />
                 <Upload size={48} />
                 <p className="dropzone-text">{isDragActive ? 'Drop files here…' : 'Drag & drop files, or click to select'}</p>
-                <p className="dropzone-hint">PDF, Word, Excel, Images, ZIP — max 150 files, 250 MB each</p>
+                <p className="dropzone-hint">PDF, Word, Excel, Images, ZIP — max 15,000 files, 700 MB each</p>
               </div>
 
               <div style={{ marginTop: '0.75rem', display: 'flex', justifyContent: 'center' }}>

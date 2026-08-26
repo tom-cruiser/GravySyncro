@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSelector } from "react-redux";
 import axios from "axios";
 import { io } from "socket.io-client";
@@ -52,6 +52,12 @@ const AdminMessages = ({ source = "app", title }) => {
   // initial fetch (an "app" tab treats anything that isn't
   // "public_contact_form" — including undefined, for pre-existing
   // messages — as its own).
+  // `page` changes every time the admin paginates — read it from a ref
+  // inside the handler instead of the effect deps, so paging doesn't tear
+  // down and reconnect the socket.
+  const pageRef = useRef(page);
+  pageRef.current = page;
+
   useEffect(() => {
     if (!token) return undefined;
 
@@ -79,7 +85,7 @@ const AdminMessages = ({ source = "app", title }) => {
       // a new row in front of what they're looking at would be jarring.
       // They'll see it as soon as they page back to the top.
       setMessages((prev) => {
-        if (page !== 1 || prev.some((m) => m._id === incoming._id)) return prev;
+        if (pageRef.current !== 1 || prev.some((m) => m._id === incoming._id)) return prev;
         return [incoming, ...prev];
       });
       setStats((prev) => ({ unreadCount: (prev.unreadCount || 0) + 1 }));
@@ -88,7 +94,7 @@ const AdminMessages = ({ source = "app", title }) => {
     return () => {
       socket.disconnect();
     };
-  }, [token, source, page]);
+  }, [token, source]);
 
   const fetchMessages = async () => {
     try {
