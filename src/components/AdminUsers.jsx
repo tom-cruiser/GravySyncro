@@ -10,7 +10,8 @@ import {
   AlertCircle,
   CheckCircle,
   XCircle,
-  HardDrive
+  HardDrive,
+  Calendar
 } from 'lucide-react';
 import axios from 'axios';
 import { useSelector } from 'react-redux';
@@ -27,7 +28,7 @@ const AdminUsers = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [storagePlanFilter, setStoragePlanFilter] = useState('');
   const [selectedUserIds, setSelectedUserIds] = useState([]);
-  const [bulkStoragePlanGb, setBulkStoragePlanGb] = useState(50);
+  const [bulkPlanId, setBulkPlanId] = useState('starter');
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -36,12 +37,44 @@ const AdminUsers = () => {
   const [reason, setReason] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [storagePlanGb, setStoragePlanGb] = useState(50);
+  const [selectedPlanId, setSelectedPlanId] = useState('starter');
   const [tenantStorageEndpointAvailable, setTenantStorageEndpointAvailable] = useState(true);
+  const [plans, setPlans] = useState([]);
 
   useEffect(() => {
     fetchUsers();
   }, [search, roleFilter, statusFilter, storagePlanFilter]);
+
+  useEffect(() => {
+    fetchPlans();
+  }, []);
+
+  const fetchPlans = async () => {
+    try {
+      const response = await axios.get(api.endpoints.users.subscriptionPlans(), {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setPlans(response.data.data.plans || []);
+    } catch (error) {
+      console.error('Error fetching subscription plans:', error);
+    }
+  };
+
+  // Storage size alone can't tell an annual enterprise plan apart from a
+  // monthly one of the same size (e.g. 1 TB) — find the plan whose id
+  // matches, falling back to the first plan of the right size/cycle.
+  const findPlanForUser = (user) => {
+    if (!user) return plans[0] || null;
+    const billingCycle = user.billingCycle === 'yearly' ? 'yearly' : 'monthly';
+    return (
+      plans.find((plan) => plan.storageGb === (user.storagePlanGb || 50) && plan.billingCycle === billingCycle)
+      || plans.find((plan) => plan.storageGb === (user.storagePlanGb || 50))
+      || plans[0]
+      || null
+    );
+  };
+
+  const uniqueStorageSizesGb = [...new Set(plans.map((plan) => plan.storageGb))].sort((a, b) => a - b);
 
   const fetchUsers = async () => {
     try {
@@ -74,7 +107,7 @@ const AdminUsers = () => {
     setReason('');
     setNewPassword('');
     setConfirmPassword('');
-    setStoragePlanGb(user?.storagePlanGb || 50);
+    setSelectedPlanId(findPlanForUser(user)?.id || 'starter');
   };
 
   const formatBytes = (bytes = 0) => {
@@ -89,6 +122,14 @@ const AdminUsers = () => {
     }
 
     return `${value.toFixed(value >= 10 || index === 0 ? 0 : 1)} ${units[index]}`;
+  };
+
+  const formatDate = (date) => (date ? new Date(date).toLocaleDateString() : '—');
+
+  const subscriptionStatusLabels = {
+    active: 'Active',
+    pending_renewal: 'Renewal Due',
+    expired: 'Expired',
   };
 
   const actionLabels = {
@@ -129,11 +170,11 @@ const AdminUsers = () => {
     setSelectedUserIds(selectableUsers.map((user) => user._id));
   };
 
-  const updateEnterpriseStorage = async ({ tenantId, userId, storageGb }) => {
+  const updateEnterpriseStorage = async ({ tenantId, userId, planId }) => {
     if (!tenantStorageEndpointAvailable) {
       await axios.patch(
         `${api.endpoints.admin.users()}/${userId}/storage-limit`,
-        { storagePlanGb: Number(storageGb) },
+        { planId },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       return;
@@ -142,7 +183,7 @@ const AdminUsers = () => {
     try {
       await axios.patch(
         api.endpoints.admin.tenantStorageLimit(tenantId),
-        { storagePlanGb: Number(storageGb) },
+        { planId },
         { headers: { Authorization: `Bearer ${token}` } }
       );
     } catch (error) {
@@ -154,7 +195,7 @@ const AdminUsers = () => {
 
       await axios.patch(
         `${api.endpoints.admin.users()}/${userId}/storage-limit`,
-        { storagePlanGb: Number(storageGb) },
+        { planId },
         { headers: { Authorization: `Bearer ${token}` } }
       );
     }
@@ -169,8 +210,10 @@ const AdminUsers = () => {
     const selectedUsers = users.filter((user) => selectedUserIds.includes(user._id));
     const uniqueTenants = [...new Map(selectedUsers.map((user) => [user.tenantId, user])).values()];
     const selectedEnterpriseCount = uniqueTenants.length;
+    const bulkPlan = plans.find((plan) => plan.id === bulkPlanId);
+    const bulkPlanLabel = bulkPlan?.name || `${bulkPlanId}`;
     const confirmed = window.confirm(
-      `Assign ${bulkStoragePlanGb} GB enterprise plan to ${selectedEnterpriseCount} selected enterprise${selectedEnterpriseCount > 1 ? 's' : ''}?`
+      `Assign ${bulkPlanLabel} plan to ${selectedEnterpriseCount} selected enterprise${selectedEnterpriseCount > 1 ? 's' : ''}?`
     );
 
     if (!confirmed) return;
@@ -182,12 +225,12 @@ const AdminUsers = () => {
           updateEnterpriseStorage({
             tenantId: tenantUser.tenantId,
             userId: tenantUser._id,
-            storageGb: bulkStoragePlanGb,
+            planId: bulkPlanId,
           })
         )
       );
 
-      alert(`Enterprise storage plan updated to ${bulkStoragePlanGb} GB for ${selectedEnterpriseCount} enterprise${selectedEnterpriseCount > 1 ? 's' : ''}.`);
+      alert(`Enterprise storage plan updated to ${bulkPlanLabel} for ${selectedEnterpriseCount} enterprise${selectedEnterpriseCount > 1 ? 's' : ''}.`);
       setSelectedUserIds([]);
       fetchUsers();
     } catch (error) {
@@ -263,10 +306,6 @@ const AdminUsers = () => {
         payload = { newPassword };
       }
 
-      if (actionType === 'setStorage') {
-        payload = { storagePlanGb: Number(storagePlanGb) };
-      }
-
       switch (actionType) {
         case 'deactivate':
           url = `${api.endpoints.admin.users()}/${selectedUser._id}/deactivate`;
@@ -285,7 +324,7 @@ const AdminUsers = () => {
           await updateEnterpriseStorage({
             tenantId: selectedUser.tenantId,
             userId: selectedUser._id,
-            storageGb: storagePlanGb,
+            planId: selectedPlanId,
           });
           setShowModal(false);
           setSelectedUser(null);
@@ -369,11 +408,9 @@ const AdminUsers = () => {
           className="filter-select"
         >
           <option value="">All Enterprise Plans</option>
-          <option value="50">50 GB</option>
-          <option value="100">100 GB</option>
-          <option value="200">200 GB</option>
-          <option value="500">500 GB</option>
-          <option value="1000">1 TB</option>
+          {uniqueStorageSizesGb.map((gb) => (
+            <option key={gb} value={gb}>{gb >= 1000 ? `${gb / 1000} TB` : `${gb} GB`}</option>
+          ))}
         </select>
       </div>
 
@@ -392,14 +429,14 @@ const AdminUsers = () => {
         <div className="bulk-right">
           <label>Assign Enterprise Plan</label>
           <select
-            value={bulkStoragePlanGb}
-            onChange={(e) => setBulkStoragePlanGb(Number(e.target.value))}
+            value={bulkPlanId}
+            onChange={(e) => setBulkPlanId(e.target.value)}
           >
-            <option value={50}>50 GB</option>
-            <option value={100}>100 GB</option>
-            <option value={200}>200 GB</option>
-            <option value={500}>500 GB</option>
-            <option value={1000}>1 TB</option>
+            {plans.map((plan) => (
+              <option key={plan.id} value={plan.id}>
+                {plan.name}{plan.billingCycle === 'yearly' ? ` — $${plan.priceUsdPerYear}/yr` : ''}
+              </option>
+            ))}
           </select>
           <button
             type="button"
@@ -441,6 +478,7 @@ const AdminUsers = () => {
                 <th>Tenant ID</th>
                 <th>Status</th>
                 <th>Enterprise Storage</th>
+                <th>Subscription</th>
                 <th>Joined</th>
                 <th>Actions</th>
               </tr>
@@ -508,6 +546,18 @@ const AdminUsers = () => {
                       <small className="storage-percent">
                         {(user.storageUsedPercentage || 0).toFixed(1)}% used
                       </small>
+                    </div>
+                  </td>
+                  <td>
+                    <div className="subscription-cell">
+                      <span className={`status-badge subscription-${user.subscriptionStatus || 'active'}`}>
+                        {subscriptionStatusLabels[user.subscriptionStatus] || 'Active'}
+                      </span>
+                      {user.billingCycle === 'yearly' && (
+                        <small className="subscription-renewal">
+                          <Calendar size={12} /> Renews {formatDate(user.currentPeriodEnd)}
+                        </small>
+                      )}
                     </div>
                   </td>
                   <td>{new Date(user.createdAt).toLocaleDateString()}</td>
@@ -626,18 +676,29 @@ const AdminUsers = () => {
               <div className="form-group">
                 <label>Enterprise Storage Plan</label>
                 <select
-                  value={storagePlanGb}
-                  onChange={(e) => setStoragePlanGb(Number(e.target.value))}
+                  value={selectedPlanId}
+                  onChange={(e) => setSelectedPlanId(e.target.value)}
                 >
-                  <option value={50}>50 GB</option>
-                  <option value={100}>100 GB</option>
-                  <option value={200}>200 GB</option>
-                  <option value={500}>500 GB</option>
-                  <option value={1000}>1 TB</option>
+                  {plans.map((plan) => (
+                    <option key={plan.id} value={plan.id}>
+                      {plan.name}{plan.billingCycle === 'yearly' ? ` — $${plan.priceUsdPerYear}/yr` : ` — $${plan.priceUsdPerMonth}/mo`}
+                    </option>
+                  ))}
                 </select>
                 <small className="storage-help">
                   Current enterprise usage: {formatBytes(selectedUser?.storageUsed || 0)} / {formatBytes(selectedUser?.storageLimit || 0)}
                 </small>
+                {plans.find((plan) => plan.id === selectedPlanId)?.billingCycle === 'yearly' && (
+                  <div className="warning-box">
+                    <AlertCircle size={20} />
+                    <p>
+                      This is billed once a year. Assigning it (re)starts a new 1-year period from today —
+                      {selectedUser?.billingCycle === 'yearly' && selectedUser?.currentPeriodEnd
+                        ? ` current period ends ${formatDate(selectedUser.currentPeriodEnd)}.`
+                        : ' the client will need a renewal invoice around this date next year.'}
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 

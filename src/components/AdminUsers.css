@@ -268,6 +268,36 @@
   color: #991b1b;
 }
 
+.subscription-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.subscription-active {
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+.subscription-pending_renewal {
+  background: #fffbeb;
+  color: #b45309;
+}
+
+.subscription-expired {
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.subscription-renewal {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+
 .storage-cell {
   min-width: 170px;
 }

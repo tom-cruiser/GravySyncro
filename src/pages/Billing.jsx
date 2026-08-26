@@ -51,7 +51,14 @@ const Billing = () => {
         }),
       ]);
 
-      setPlans(plansResponse?.data?.data?.plans || []);
+      // The annual enterprise tiers (Enterprise 1TB/2TB) are assigned
+      // manually by an admin from the storage-management panel after an
+      // enterprise client reaches out — see AdminUsers.jsx — not something
+      // a user can self-serve here, since this page doesn't collect
+      // payment or track annual billing periods.
+      const monthlyPlans = (plansResponse?.data?.data?.plans || [])
+        .filter((plan) => plan.billingCycle !== 'yearly');
+      setPlans(monthlyPlans);
       setTenantStorage(profileResponse?.data?.data?.tenantStorage || null);
     } catch (error) {
       console.error('Failed to load billing data:', error);
