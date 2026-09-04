@@ -41,6 +41,7 @@ export default {
     admin: {
       dashboardStats: () => getApiUrl('/admin/dashboard/stats'),       // ✓ fixed: was /admin/dashboard-stats
       users: () => getApiUrl('/admin/users'),
+      subscriptionAccess: (userId) => getApiUrl(`/admin/users/${userId}/subscription-access`),
       tenants: () => getApiUrl('/admin/tenants'),
       tenantStorageLimit: (tenantId) => getApiUrl(`/admin/tenants/${tenantId}/storage-limit`),
       activityLogs: (params = '') => getApiUrl(`/admin/activities${params}`),

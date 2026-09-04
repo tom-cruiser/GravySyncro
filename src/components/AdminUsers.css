@@ -298,6 +298,42 @@
   color: var(--color-text-secondary);
 }
 
+.access-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.access-trial {
+  background: #fffbeb;
+  color: #b45309;
+}
+
+.access-active,
+.access-admin-approved {
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+.access-locked {
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.access-legacy {
+  background: var(--color-background);
+  color: var(--color-text-secondary);
+}
+
+.access-expiry {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+
 .storage-cell {
   min-width: 170px;
 }

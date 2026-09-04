@@ -11,7 +11,10 @@ import {
   CheckCircle,
   XCircle,
   HardDrive,
-  Calendar
+  Calendar,
+  Unlock,
+  Lock,
+  Clock
 } from 'lucide-react';
 import axios from 'axios';
 import { useSelector } from 'react-redux';
@@ -38,6 +41,7 @@ const AdminUsers = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [selectedPlanId, setSelectedPlanId] = useState('starter');
+  const [extendDays, setExtendDays] = useState('');
   const [tenantStorageEndpointAvailable, setTenantStorageEndpointAvailable] = useState(true);
   const [plans, setPlans] = useState([]);
 
@@ -108,6 +112,7 @@ const AdminUsers = () => {
     setNewPassword('');
     setConfirmPassword('');
     setSelectedPlanId(findPlanForUser(user)?.id || 'starter');
+    setExtendDays('');
   };
 
   const formatBytes = (bytes = 0) => {
@@ -132,12 +137,25 @@ const AdminUsers = () => {
     expired: 'Expired',
   };
 
+  // accessLevel/isSubscriptionActive/trialExpiresAt are set by
+  // jobs/trialAccessLock.js (cron) and admin overrides — unrelated to the
+  // isActive/subscriptionStatus fields shown in the other two columns.
+  // A user created before this feature shipped has accessLevel `undefined`,
+  // which is deliberately treated as unrestricted (see models/User.js).
+  const accessLevelLabels = {
+    trial: 'Trial',
+    active: 'Active',
+    locked: 'Locked',
+    'admin-approved': 'Admin Approved',
+  };
+
   const actionLabels = {
     deactivate: 'Deactivate',
     activate: 'Activate',
     delete: 'Delete',
     resetPassword: 'Reset Password',
-    setStorage: 'Set Enterprise Plan'
+    setStorage: 'Set Enterprise Plan',
+    reactivateAccess: 'Reactivate Access',
   };
 
   const actionPrompts = {
@@ -146,6 +164,7 @@ const AdminUsers = () => {
     delete: 'delete',
     resetPassword: 'reset password for',
     setStorage: 'set the enterprise plan for',
+    reactivateAccess: 'reactivate trial access for',
   };
 
   const selectableUsers = users.filter((user) => user.role !== 'Admin');
@@ -331,6 +350,20 @@ const AdminUsers = () => {
           fetchUsers();
           alert(`${actionLabels[actionType]} completed successfully!`);
           return;
+        case 'reactivateAccess': {
+          const days = Number(extendDays);
+          const body = days > 0 ? { accessLevel: 'active', extendDays: days } : {};
+          await axios.patch(
+            api.endpoints.admin.subscriptionAccess(selectedUser._id),
+            body,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          setShowModal(false);
+          setSelectedUser(null);
+          fetchUsers();
+          alert(`${actionLabels[actionType]} completed successfully!`);
+          return;
+        }
         default:
           return;
       }
@@ -477,6 +510,7 @@ const AdminUsers = () => {
                 <th>Role</th>
                 <th>Tenant ID</th>
                 <th>Status</th>
+                <th>Trial/Access</th>
                 <th>Enterprise Storage</th>
                 <th>Subscription</th>
                 <th>Joined</th>
@@ -532,6 +566,26 @@ const AdminUsers = () => {
                     )}
                   </td>
                   <td>
+                    <div className="access-cell">
+                      <span className={`status-badge access-${user.accessLevel || 'legacy'}`}>
+                        {user.accessLevel === 'locked' && <Lock size={14} />}
+                        {user.accessLevel === 'trial' && <Clock size={14} />}
+                        {(user.accessLevel === 'active' || user.accessLevel === 'admin-approved') && <CheckCircle size={14} />}
+                        {accessLevelLabels[user.accessLevel] || 'No Trial Limit'}
+                      </span>
+                      {user.accessLevel === 'trial' && user.trialExpiresAt && (
+                        <small className="access-expiry">
+                          <Calendar size={12} /> Trial ends {formatDate(user.trialExpiresAt)}
+                        </small>
+                      )}
+                      {user.accessLevel === 'locked' && user.trialExpiresAt && (
+                        <small className="access-expiry">
+                          <Calendar size={12} /> Expired {formatDate(user.trialExpiresAt)}
+                        </small>
+                      )}
+                    </div>
+                  </td>
+                  <td>
                     <div className="storage-cell">
                       <div className="storage-values">
                         <span>{formatBytes(user.storageUsed)}</span>
@@ -565,6 +619,15 @@ const AdminUsers = () => {
                     <div className="action-buttons">
                       {user.role !== 'Admin' && (
                         <>
+                          {user.accessLevel === 'locked' && (
+                            <button
+                              className="btn-icon btn-success"
+                              onClick={() => handleAction(user, 'reactivateAccess')}
+                              title="Reactivate Access (Trial Expired)"
+                            >
+                              <Unlock size={16} />
+                            </button>
+                          )}
                           {user.isActive ? (
                             <button
                               className="btn-icon btn-danger"
@@ -706,6 +769,23 @@ const AdminUsers = () => {
               <div className="warning-box">
                 <AlertCircle size={20} />
                 <p>This action cannot be undone. All member data will be permanently deleted.</p>
+              </div>
+            )}
+
+            {actionType === 'reactivateAccess' && (
+              <div className="form-group">
+                <label>Extend trial by (days) — optional</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={extendDays}
+                  onChange={(e) => setExtendDays(e.target.value)}
+                  placeholder="Leave blank to grant permanent access"
+                />
+                <small className="storage-help">
+                  Leave blank to grant indefinite access (accessLevel set to "Admin Approved").
+                  Enter a number of days to instead reopen a limited trial window.
+                </small>
               </div>
             )}
 
