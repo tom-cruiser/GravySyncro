@@ -34,6 +34,12 @@ import './Documents.css';
 const MAX_DOC_FILES = 15000;
 const MAX_DOC_SIZE = 734003200; // 700 MB
 
+// Folder View needs the full matching result set to build an accurate tree —
+// the normal 20/page limit meant a search's matches could be split across
+// pages, so folders holding later matches would silently appear empty or
+// missing entirely. Folder View instead fetches one larger batch up front.
+const FOLDER_VIEW_FETCH_LIMIT = 200;
+
 const MAX_VIDEO_SIZE = 1.5 * 1024 * 1024 * 1024; // 1.5 GB
 const MAX_CONCURRENT_VIDEO_UPLOADS = 3;
 const CHUNK_SIZE = 10 * 1024 * 1024; // 10 MB parts
@@ -302,7 +308,7 @@ const Documents = () => {
   useEffect(() => {
     if (!token || activeTab !== 'files') return;
     fetchDocuments(currentPage);
-  }, [token, currentPage, filters.searchQuery, filters.type, filters.sortBy, activeTab, activeWorkspaceId]);
+  }, [token, currentPage, filters.searchQuery, filters.type, filters.sortBy, activeTab, activeWorkspaceId, contentView]);
 
   useEffect(() => {
     setFilePageInput(String(currentPage));
@@ -545,11 +551,13 @@ const Documents = () => {
       name: 'name', 'name-desc': '-name',
       size: '-fileSize', 'size-asc': 'fileSize',
     };
+    const isFolderView = contentView === 'folders';
     try {
       const response = await axios.get(`${import.meta.env.VITE_API_URL}/documents`, {
         headers: authHeaders(),
         params: {
-          page, limit: pageSize,
+          page: isFolderView ? 1 : page,
+          limit: isFolderView ? FOLDER_VIEW_FETCH_LIMIT : pageSize,
           sortBy: sortByMap[filters.sortBy] || '-createdAt',
           ...(activeWorkspaceId ? { workspaceId: activeWorkspaceId } : {}),
           ...(filters.searchQuery?.trim() ? { search: filters.searchQuery.trim() } : {}),
@@ -1537,57 +1545,66 @@ const Documents = () => {
             />
           )}
 
-          <div className="documents-pagination">
-            <div className="pagination-left">
-              <button type="button" className="btn-secondary" disabled={currentPage <= 1 || isLoading} onClick={() => setCurrentPage(1)}>First</button>
-              <button type="button" className="btn-secondary" disabled={currentPage <= 1 || isLoading} onClick={() => setCurrentPage(p => Math.max(1, p - 1))}>Previous</button>
+          {contentView === 'folders' ? (
+            <div className="documents-folder-view-note">
+              {filters.searchQuery?.trim()
+                ? `Showing folders for "${filters.searchQuery.trim()}" — up to ${FOLDER_VIEW_FETCH_LIMIT} matching files across all folders.`
+                : `Showing up to ${FOLDER_VIEW_FETCH_LIMIT} files across all folders.`}
+              {totalDocuments > FOLDER_VIEW_FETCH_LIMIT && ' Switch to Flat View to page through the rest.'}
             </div>
-            <div className="pagination-center">
-              <div className="pagination-pages" role="group" aria-label="File pages">
-                {getVisiblePages(currentPage, totalPages).map((pageNumber) => (
+          ) : (
+            <div className="documents-pagination">
+              <div className="pagination-left">
+                <button type="button" className="btn-secondary" disabled={currentPage <= 1 || isLoading} onClick={() => setCurrentPage(1)}>First</button>
+                <button type="button" className="btn-secondary" disabled={currentPage <= 1 || isLoading} onClick={() => setCurrentPage(p => Math.max(1, p - 1))}>Previous</button>
+              </div>
+              <div className="pagination-center">
+                <div className="pagination-pages" role="group" aria-label="File pages">
+                  {getVisiblePages(currentPage, totalPages).map((pageNumber) => (
+                    <button
+                      key={`file-page-${pageNumber}`}
+                      type="button"
+                      className={`btn-secondary pagination-page-btn ${pageNumber === currentPage ? 'active' : ''}`}
+                      onClick={() => setCurrentPage(pageNumber)}
+                      disabled={isLoading}
+                    >
+                      {pageNumber}
+                    </button>
+                  ))}
+                </div>
+                <span className="pagination-info">Page {currentPage} of {totalPages} • {totalDocuments} total files</span>
+              </div>
+              <div className="pagination-right">
+                <div className="pagination-jump">
+                  <label htmlFor="file-page-jump">Go to</label>
+                  <input
+                    id="file-page-jump"
+                    type="number"
+                    min="1"
+                    max={totalPages}
+                    value={filePageInput}
+                    onChange={(event) => setFilePageInput(event.target.value)}
+                    disabled={isLoading || totalPages <= 1}
+                  />
                   <button
-                    key={`file-page-${pageNumber}`}
                     type="button"
-                    className={`btn-secondary pagination-page-btn ${pageNumber === currentPage ? 'active' : ''}`}
-                    onClick={() => setCurrentPage(pageNumber)}
-                    disabled={isLoading}
+                    className="btn-secondary"
+                    disabled={isLoading || totalPages <= 1}
+                    onClick={() => {
+                      const parsed = Number(filePageInput);
+                      if (!Number.isFinite(parsed)) return;
+                      const safePage = Math.min(totalPages, Math.max(1, Math.trunc(parsed)));
+                      setCurrentPage(safePage);
+                    }}
                   >
-                    {pageNumber}
+                    Go
                   </button>
-                ))}
+                </div>
+                <button type="button" className="btn-secondary" disabled={currentPage >= totalPages || isLoading} onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}>Next</button>
+                <button type="button" className="btn-secondary" disabled={currentPage >= totalPages || isLoading} onClick={() => setCurrentPage(totalPages)}>Last</button>
               </div>
-              <span className="pagination-info">Page {currentPage} of {totalPages} • {totalDocuments} total files</span>
             </div>
-            <div className="pagination-right">
-              <div className="pagination-jump">
-                <label htmlFor="file-page-jump">Go to</label>
-                <input
-                  id="file-page-jump"
-                  type="number"
-                  min="1"
-                  max={totalPages}
-                  value={filePageInput}
-                  onChange={(event) => setFilePageInput(event.target.value)}
-                  disabled={isLoading || totalPages <= 1}
-                />
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  disabled={isLoading || totalPages <= 1}
-                  onClick={() => {
-                    const parsed = Number(filePageInput);
-                    if (!Number.isFinite(parsed)) return;
-                    const safePage = Math.min(totalPages, Math.max(1, Math.trunc(parsed)));
-                    setCurrentPage(safePage);
-                  }}
-                >
-                  Go
-                </button>
-              </div>
-              <button type="button" className="btn-secondary" disabled={currentPage >= totalPages || isLoading} onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}>Next</button>
-              <button type="button" className="btn-secondary" disabled={currentPage >= totalPages || isLoading} onClick={() => setCurrentPage(totalPages)}>Last</button>
-            </div>
-          </div>
+          )}
         </>
       )}
 

@@ -115,6 +115,17 @@
   font-size: 0.92rem;
 }
 
+.documents-folder-view-note {
+  margin-top: 1rem;
+  padding: 0.6rem 0.85rem;
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  background: var(--gray-50);
+  color: var(--gray-600);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
 @media (max-width: 900px) {
   .report-controls {
     width: 100%;

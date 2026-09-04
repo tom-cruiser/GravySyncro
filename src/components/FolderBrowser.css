@@ -77,8 +77,75 @@
 
 .folder-entry-wrap.grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-  gap: 0.6rem;
+  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+  gap: 1.5rem 1rem;
+}
+
+.folder-entry-wrap.grid .folder-entry {
+  position: relative;
+  border: none;
+  background: transparent;
+  border-radius: 12px;
+}
+
+.folder-entry-wrap.grid .folder-entry-folder {
+  flex-direction: column;
+  padding: 0.85rem 0.5rem 1rem;
+  gap: 0;
+  border-radius: 12px;
+}
+
+.folder-entry-wrap.grid .folder-entry-folder:hover {
+  background: #f2f3f5;
+  border-color: transparent;
+}
+
+.folder-entry-wrap.grid .folder-entry-folder-main {
+  flex-direction: column;
+  gap: 0.65rem;
+  width: 100%;
+  padding: 0;
+}
+
+.folder-entry-wrap.grid .folder-entry-folder-main:hover {
+  background: transparent;
+}
+
+.folder-graphic-svg {
+  filter: drop-shadow(0 10px 14px rgba(15, 15, 20, 0.22));
+  transition: transform 0.15s ease;
+  flex-shrink: 0;
+}
+
+.folder-entry-wrap.grid .folder-entry-folder-main:hover .folder-graphic-svg {
+  transform: translateY(-2px) scale(1.03);
+}
+
+.folder-entry-wrap.grid .folder-entry-title {
+  text-transform: uppercase;
+  font-weight: 800;
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
+  color: #18181b;
+  white-space: normal;
+  text-align: center;
+  max-width: 100%;
+}
+
+.folder-entry-wrap.grid .folder-entry-sub {
+  display: none;
+}
+
+.folder-entry-wrap.grid .folder-folder-delete {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.35rem;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.folder-entry-wrap.grid .folder-entry:hover .folder-folder-delete {
+  opacity: 1;
 }
 
 .folder-entry {
@@ -135,10 +202,6 @@
 .folder-entry-folder:hover {
   border-color: #cbd5e1;
   background: #f8fafc;
-}
-
-.folder-icon {
-  color: #c0841b;
 }
 
 .folder-entry-title {

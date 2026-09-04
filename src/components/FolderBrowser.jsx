@@ -9,14 +9,13 @@ import {
   FileSpreadsheet,
   FileText,
   FileType2,
-  Folder,
-  FolderOpen,
   LayoutGrid,
   List,
   MessageCircle,
   Share2,
   Trash2,
 } from 'lucide-react';
+import FolderIconGraphic from './FolderIconGraphic';
 import './FolderBrowser.css';
 
 const createNode = () => ({ folders: {}, files: [] });
@@ -172,7 +171,7 @@ const FolderBrowser = ({ documents, onView, onConversation, onDownload, onShare,
               {folders.map((folder) => (
                 <div key={folder.fullPath} className="folder-entry folder-entry-folder">
                   <button type="button" className="folder-entry-folder-main" onClick={() => openFolder(folder.name)}>
-                    {viewMode === 'grid' ? <FolderOpen size={24} className="folder-icon" /> : <Folder size={18} className="folder-icon" />}
+                    <FolderIconGraphic size={viewMode === 'grid' ? 84 : 26} />
                     <span className="folder-entry-title">{folder.name}</span>
                     <span className="folder-entry-sub">Folder</span>
                   </button>
