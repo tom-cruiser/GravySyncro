@@ -7,7 +7,6 @@ import {
   Share2,
   Trash2,
 } from 'lucide-react';
-import FolderIconGraphic from './FolderIconGraphic';
 import FileIconGraphic from './FileIconGraphic';
 import './FolderBrowser.css';
 
@@ -139,9 +138,9 @@ const FolderBrowser = ({ documents, onView, onConversation, onDownload, onShare,
                 <div key={folder.fullPath} className="folder-entry folder-entry-folder">
                   <button type="button" className="folder-entry-folder-main" onClick={() => openFolder(folder.name)}>
                     <span className="folder-icon-stack">
-                      <FolderIconGraphic size={84} />
-                      <span className="folder-icon-label">{folder.name}</span>
+                      <img src="/listing-folder.png" alt="" className="folder-graphic-img" />
                     </span>
+                    <span className="folder-entry-title">{folder.name}</span>
                   </button>
                   <button
                     type="button"

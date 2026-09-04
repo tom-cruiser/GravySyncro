@@ -103,7 +103,7 @@
 
 .folder-entry-wrap.grid .folder-entry-folder-main {
   flex-direction: column;
-  gap: 0;
+  gap: 0.6rem;
   width: 100%;
   min-width: 0;
   padding: 0;
@@ -118,39 +118,34 @@
   display: inline-flex;
   width: 84px;
   max-width: 100%;
-  aspect-ratio: 250 / 230;
+  aspect-ratio: 1536 / 1024;
   height: auto;
   flex-shrink: 0;
 }
 
-.folder-graphic-svg {
+.folder-graphic-img {
   display: block;
   width: 100%;
   height: 100%;
-  filter: drop-shadow(0 10px 14px rgba(15, 15, 20, 0.22));
+  object-fit: contain;
+  filter: drop-shadow(0 8px 10px rgba(15, 15, 20, 0.18));
   transition: transform 0.15s ease;
   flex-shrink: 0;
 }
 
-.folder-entry-wrap.grid .folder-entry-folder-main:hover .folder-graphic-svg {
+.folder-entry-wrap.grid .folder-entry-folder-main:hover .folder-graphic-img {
   transform: translateY(-2px) scale(1.03);
 }
 
-.folder-icon-label {
-  position: absolute;
-  left: 12%;
-  right: 10%;
-  bottom: 9%;
-  color: #fff;
-  font-weight: 700;
-  font-size: 0.68rem;
-  line-height: 1.2;
-  text-align: left;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  pointer-events: none;
+.folder-entry-wrap.grid .folder-entry-title {
+  text-transform: uppercase;
+  font-weight: 800;
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  color: #18181b;
+  white-space: normal;
+  text-align: center;
+  max-width: 100%;
 }
 
 .folder-entry-wrap.grid .folder-folder-delete {
