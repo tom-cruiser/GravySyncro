@@ -3,17 +3,12 @@ import {
   ChevronRight,
   Download,
   Eye,
-  FileArchive,
-  FileCode2,
-  FileImage,
-  FileSpreadsheet,
-  FileText,
-  FileType2,
   MessageCircle,
   Share2,
   Trash2,
 } from 'lucide-react';
 import FolderIconGraphic from './FolderIconGraphic';
+import FileIconGraphic from './FileIconGraphic';
 import './FolderBrowser.css';
 
 const createNode = () => ({ folders: {}, files: [] });
@@ -80,17 +75,6 @@ const detectFileKind = (doc) => {
   if (type.includes('zip') || type.includes('rar') || /\.(zip|rar|7z|tar|gz)$/.test(name)) return 'archive';
   if (type.includes('json') || type.includes('xml') || /\.(json|xml|yaml|yml)$/.test(name)) return 'code';
   return 'generic';
-};
-
-const iconForFile = (doc) => {
-  const kind = detectFileKind(doc);
-  if (kind === 'pdf') return <FileType2 size={16} className="folder-file-icon file-pdf" />;
-  if (kind === 'image') return <FileImage size={16} className="folder-file-icon file-image" />;
-  if (kind === 'doc') return <FileText size={16} className="folder-file-icon file-doc" />;
-  if (kind === 'sheet') return <FileSpreadsheet size={16} className="folder-file-icon file-sheet" />;
-  if (kind === 'archive') return <FileArchive size={16} className="folder-file-icon file-archive" />;
-  if (kind === 'code') return <FileCode2 size={16} className="folder-file-icon file-code" />;
-  return <FileText size={16} className="folder-file-icon file-generic" />;
 };
 
 const FolderBrowser = ({ documents, onView, onConversation, onDownload, onShare, onDelete, onDeleteFolder, rootLabel = 'Root' }) => {
@@ -176,29 +160,27 @@ const FolderBrowser = ({ documents, onView, onConversation, onDownload, onShare,
           )}
 
           {files.length > 0 && (
-            <div className="folder-entry-wrap list">
+            <div className="folder-entry-wrap grid">
               {files.map((doc) => (
                 <div
                   key={doc.id || doc._id}
                   className="folder-entry folder-entry-file"
                   onClick={() => onView?.(resolveDocumentId(doc), doc)}
                 >
-                  <div className="folder-file-info">
-                    {iconForFile(doc)}
-                    <div className="folder-file-meta-col">
-                      <span className="folder-file-title">{doc.title}</span>
-                      <span className="folder-file-meta">{doc.type} • {doc.size}</span>
-                    </div>
-                  </div>
-                  <div className="folder-file-actions">
-                    <button onClick={(event) => { event.stopPropagation(); onView?.(resolveDocumentId(doc), doc); }} title="View Document"><Eye size={14} /></button>
-                    {onConversation && (
-                      <button onClick={(event) => { event.stopPropagation(); onConversation?.(resolveDocumentId(doc), doc); }} title="Open Conversation"><MessageCircle size={14} /></button>
-                    )}
-                    <button onClick={(event) => { event.stopPropagation(); onDownload?.(doc); }} title="Download"><Download size={14} /></button>
-                    <button onClick={(event) => { event.stopPropagation(); onShare?.(doc); }} title="Share"><Share2 size={14} /></button>
-                    <button onClick={(event) => { event.stopPropagation(); onDelete?.(doc); }} title="Delete"><Trash2 size={14} /></button>
-                  </div>
+                  <span className="file-icon-stack">
+                    <FileIconGraphic kind={detectFileKind(doc)} size={84} />
+                    <span className="file-icon-actions">
+                      <button onClick={(event) => { event.stopPropagation(); onView?.(resolveDocumentId(doc), doc); }} title="View Document"><Eye size={13} /></button>
+                      {onConversation && (
+                        <button onClick={(event) => { event.stopPropagation(); onConversation?.(resolveDocumentId(doc), doc); }} title="Open Conversation"><MessageCircle size={13} /></button>
+                      )}
+                      <button onClick={(event) => { event.stopPropagation(); onDownload?.(doc); }} title="Download"><Download size={13} /></button>
+                      <button onClick={(event) => { event.stopPropagation(); onShare?.(doc); }} title="Share"><Share2 size={13} /></button>
+                      <button onClick={(event) => { event.stopPropagation(); onDelete?.(doc); }} title="Delete"><Trash2 size={13} /></button>
+                    </span>
+                  </span>
+                  <span className="file-entry-title">{doc.title}</span>
+                  <span className="file-entry-meta">{doc.type} • {doc.size}</span>
                 </div>
               ))}
             </div>

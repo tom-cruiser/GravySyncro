@@ -3,6 +3,9 @@
   flex-direction: column;
   gap: 0.9rem;
   margin-top: 0.75rem;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .folder-toolbar {
@@ -69,16 +72,12 @@
   cursor: not-allowed;
 }
 
-.folder-entry-wrap.list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.55rem;
-}
-
 .folder-entry-wrap.grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(128px, 100%), 1fr));
   gap: 1.5rem 1rem;
+  width: 100%;
+  min-width: 0;
 }
 
 .folder-entry-wrap.grid .folder-entry {
@@ -86,6 +85,7 @@
   border: none;
   background: transparent;
   border-radius: 12px;
+  min-width: 0;
 }
 
 .folder-entry-wrap.grid .folder-entry-folder {
@@ -93,6 +93,7 @@
   padding: 0.85rem 0.5rem 1rem;
   gap: 0;
   border-radius: 12px;
+  min-width: 0;
 }
 
 .folder-entry-wrap.grid .folder-entry-folder:hover {
@@ -104,6 +105,7 @@
   flex-direction: column;
   gap: 0;
   width: 100%;
+  min-width: 0;
   padding: 0;
 }
 
@@ -115,10 +117,16 @@
   position: relative;
   display: inline-flex;
   width: 84px;
-  height: 74px;
+  max-width: 100%;
+  aspect-ratio: 250 / 230;
+  height: auto;
+  flex-shrink: 0;
 }
 
 .folder-graphic-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
   filter: drop-shadow(0 10px 14px rgba(15, 15, 20, 0.22));
   transition: transform 0.15s ease;
   flex-shrink: 0;
@@ -227,104 +235,92 @@
   color: #64748b;
 }
 
-.folder-file-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.45rem 0.55rem;
-  border-radius: 6px;
-}
-
-.folder-file-row:hover {
-  background: #f7fafc;
-}
-
-.folder-file-info {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  min-width: 0;
-}
-
-.folder-file-meta-col {
-  display: flex;
+.folder-entry-wrap.grid .folder-entry-file {
   flex-direction: column;
+  align-items: center;
+  padding: 0.85rem 0.5rem 1rem;
+  gap: 0.4rem;
+  border-radius: 12px;
+  cursor: pointer;
   min-width: 0;
 }
 
-.folder-entry-file {
-  padding: 0.7rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.6rem;
+.folder-entry-wrap.grid .folder-entry-file:hover {
+  background: #f2f3f5;
 }
 
-.folder-file-icon {
+.file-icon-stack {
+  position: relative;
+  display: inline-flex;
+  width: 84px;
+  max-width: 100%;
+  aspect-ratio: 150 / 190;
+  height: auto;
   flex-shrink: 0;
 }
 
-.file-pdf {
-  color: #dc2626;
+.file-graphic-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 8px 12px rgba(15, 15, 20, 0.16));
+  transition: transform 0.15s ease;
 }
 
-.file-image {
-  color: #0891b2;
+.folder-entry-wrap.grid .folder-entry-file:hover .file-graphic-svg {
+  transform: translateY(-2px) scale(1.03);
 }
 
-.file-doc {
-  color: #2563eb;
-}
-
-.file-sheet {
-  color: #16a34a;
-}
-
-.file-archive {
-  color: #7c3aed;
-}
-
-.file-code {
-  color: #0f766e;
-}
-
-.file-generic {
-  color: #475569;
-}
-
-.folder-file-title {
-  font-weight: 500;
-  color: #2d3748;
+.file-entry-title {
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: #1f2937;
+  text-align: center;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 420px;
 }
 
-.folder-file-meta {
-  font-size: 0.78rem;
-  color: #718096;
+.file-entry-meta {
+  font-size: 0.72rem;
+  color: #64748b;
+  text-align: center;
 }
 
-.folder-file-actions {
+.file-icon-actions {
+  position: absolute;
+  top: 4px;
+  right: 4px;
   display: flex;
-  gap: 0.25rem;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 2px 6px rgba(15, 15, 20, 0.18);
+  opacity: 0;
+  transition: opacity 0.15s ease;
 }
 
-.folder-file-actions button {
-  border: 1px solid #e2e8f0;
-  background: #fff;
-  border-radius: 6px;
-  padding: 0.25rem;
+.folder-entry-wrap.grid .folder-entry-file:hover .file-icon-actions {
+  opacity: 1;
+}
+
+.file-icon-actions button {
+  border: 0;
+  background: transparent;
+  border-radius: 5px;
+  padding: 3px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  color: #475569;
 }
 
-.folder-file-actions button:hover {
-  background: #edf2f7;
+.file-icon-actions button:hover {
+  background: #eef2f7;
+  color: #1f2937;
 }
 
 .folder-empty {
