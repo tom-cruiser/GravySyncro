@@ -41,6 +41,7 @@ const AdminUsers = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [selectedPlanId, setSelectedPlanId] = useState('starter');
+  const [planType, setPlanType] = useState('monthly'); // 'monthly' | 'yearly' (Enterprise)
   const [extendDays, setExtendDays] = useState('');
   const [tenantStorageEndpointAvailable, setTenantStorageEndpointAvailable] = useState(true);
   const [plans, setPlans] = useState([]);
@@ -111,8 +112,22 @@ const AdminUsers = () => {
     setReason('');
     setNewPassword('');
     setConfirmPassword('');
-    setSelectedPlanId(findPlanForUser(user)?.id || 'starter');
+    const currentPlan = findPlanForUser(user);
+    setSelectedPlanId(currentPlan?.id || 'starter');
+    setPlanType(currentPlan?.billingCycle === 'yearly' ? 'yearly' : 'monthly');
     setExtendDays('');
+  };
+
+  const plansByType = (type) => plans.filter((plan) => (
+    type === 'yearly' ? plan.billingCycle === 'yearly' : plan.billingCycle !== 'yearly'
+  ));
+
+  const handlePlanTypeChange = (type) => {
+    setPlanType(type);
+    const matchingPlans = plansByType(type);
+    if (!matchingPlans.some((plan) => plan.id === selectedPlanId)) {
+      setSelectedPlanId(matchingPlans[0]?.id || '');
+    }
   };
 
   const formatBytes = (bytes = 0) => {
@@ -137,6 +152,22 @@ const AdminUsers = () => {
     expired: 'Expired',
   };
 
+  const getAccessBlockLabel = (user) => {
+    if (!user || user.isSubscriptionActive !== false) {
+      return null;
+    }
+
+    if (user.accessLevel === 'trial' || user.accessLevel === 'locked') {
+      return 'Blocked by trial access';
+    }
+
+    if (user.subscriptionStatus === 'expired' || user.subscriptionStatus === 'pending_renewal') {
+      return 'Blocked by subscription state';
+    }
+
+    return 'Blocked by access settings';
+  };
+
   // accessLevel/isSubscriptionActive/trialExpiresAt are set by
   // jobs/trialAccessLock.js (cron) and admin overrides — unrelated to the
   // isActive/subscriptionStatus fields shown in the other two columns.
@@ -154,7 +185,7 @@ const AdminUsers = () => {
     activate: 'Activate',
     delete: 'Delete',
     resetPassword: 'Reset Password',
-    setStorage: 'Set Enterprise Plan',
+    setStorage: 'Set Plan',
     reactivateAccess: 'Reactivate Access',
   };
 
@@ -163,7 +194,7 @@ const AdminUsers = () => {
     activate: 'activate',
     delete: 'delete',
     resetPassword: 'reset password for',
-    setStorage: 'set the enterprise plan for',
+    setStorage: 'set the plan for',
     reactivateAccess: 'reactivate trial access for',
   };
 
@@ -573,6 +604,11 @@ const AdminUsers = () => {
                         {(user.accessLevel === 'active' || user.accessLevel === 'admin-approved') && <CheckCircle size={14} />}
                         {accessLevelLabels[user.accessLevel] || 'No Trial Limit'}
                       </span>
+                      {getAccessBlockLabel(user) && (
+                        <small className="access-block-label">
+                          <AlertCircle size={12} /> {getAccessBlockLabel(user)}
+                        </small>
+                      )}
                       {user.accessLevel === 'trial' && user.trialExpiresAt && (
                         <small className="access-expiry">
                           <Calendar size={12} /> Trial ends {formatDate(user.trialExpiresAt)}
@@ -655,7 +691,7 @@ const AdminUsers = () => {
                           <button
                             className="btn-icon btn-info"
                             onClick={() => handleAction(user, 'setStorage')}
-                            title="Set Enterprise Plan"
+                            title="Set Plan (Monthly or Enterprise)"
                           >
                             <HardDrive size={16} />
                           </button>
@@ -737,19 +773,37 @@ const AdminUsers = () => {
 
             {actionType === 'setStorage' && (
               <div className="form-group">
-                <label>Enterprise Storage Plan</label>
+                <label>Plan Type</label>
+                <div className="plan-type-toggle">
+                  <button
+                    type="button"
+                    className={`plan-type-btn ${planType === 'monthly' ? 'active' : ''}`}
+                    onClick={() => handlePlanTypeChange('monthly')}
+                  >
+                    Monthly
+                  </button>
+                  <button
+                    type="button"
+                    className={`plan-type-btn ${planType === 'yearly' ? 'active' : ''}`}
+                    onClick={() => handlePlanTypeChange('yearly')}
+                  >
+                    Enterprise
+                  </button>
+                </div>
+
+                <label>{planType === 'yearly' ? 'Enterprise Plan' : 'Monthly Plan'}</label>
                 <select
                   value={selectedPlanId}
                   onChange={(e) => setSelectedPlanId(e.target.value)}
                 >
-                  {plans.map((plan) => (
+                  {plansByType(planType).map((plan) => (
                     <option key={plan.id} value={plan.id}>
                       {plan.name}{plan.billingCycle === 'yearly' ? ` — $${plan.priceUsdPerYear}/yr` : ` — $${plan.priceUsdPerMonth}/mo`}
                     </option>
                   ))}
                 </select>
                 <small className="storage-help">
-                  Current enterprise usage: {formatBytes(selectedUser?.storageUsed || 0)} / {formatBytes(selectedUser?.storageLimit || 0)}
+                  Current usage: {formatBytes(selectedUser?.storageUsed || 0)} / {formatBytes(selectedUser?.storageLimit || 0)}
                 </small>
                 {plans.find((plan) => plan.id === selectedPlanId)?.billingCycle === 'yearly' && (
                   <div className="warning-box">

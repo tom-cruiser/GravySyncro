@@ -1,0 +1,123 @@
+/* Namespaced subscription-gate-* to avoid bleeding into the other unscoped
+   .modal/.modal-overlay classes already in this codebase (see TermsModal.css). */
+.subscription-gate-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  background: rgba(28, 27, 46, 0.56);
+  backdrop-filter: blur(2px);
+}
+
+.subscription-gate-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1301;
+  width: min(440px, 92vw);
+  display: flex;
+  flex-direction: column;
+  background: var(--auth-white, #fffdf8);
+  border-radius: 20px;
+  border: 1px solid var(--auth-border, rgba(28, 27, 46, 0.1));
+  box-shadow: 0 30px 70px rgba(2, 6, 23, 0.35);
+  overflow: hidden;
+}
+
+.subscription-gate-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px 0;
+  flex-shrink: 0;
+}
+
+.subscription-gate-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: rgba(245, 158, 11, 0.14);
+  color: #b45309;
+}
+
+.subscription-gate-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--auth-muted, #55536e);
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.subscription-gate-close:hover {
+  background: var(--auth-cream, #faf6ec);
+  color: var(--auth-ink, #1c1b2e);
+}
+
+.subscription-gate-body {
+  padding: 14px 22px 20px;
+}
+
+.subscription-gate-body h3 {
+  margin: 0 0 8px;
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--auth-ink, #1c1b2e);
+}
+
+.subscription-gate-body p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--auth-muted, #55536e);
+}
+
+.subscription-gate-footer {
+  padding: 14px 22px;
+  border-top: 1px solid var(--auth-border-soft, rgba(28, 27, 46, 0.06));
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.subscription-gate-secondary,
+.subscription-gate-primary {
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.subscription-gate-secondary {
+  border: 1px solid var(--auth-border, rgba(28, 27, 46, 0.16));
+  background: transparent;
+  color: var(--auth-ink, #1c1b2e);
+}
+
+.subscription-gate-primary {
+  border: none;
+  background: var(--auth-c1, #1c1b2e);
+  color: #ffffff;
+}
+
+.subscription-gate-secondary:hover,
+.subscription-gate-primary:hover {
+  opacity: 0.88;
+}
+
+@media (max-width: 480px) {
+  .subscription-gate-modal {
+    width: 94vw;
+  }
+}

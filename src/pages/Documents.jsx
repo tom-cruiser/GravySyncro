@@ -827,7 +827,11 @@ const Documents = () => {
     } catch (err) {
       const msg = err?.response?.data?.message || err?.message || 'Upload failed.';
       dispatch(uploadDocumentFailure(msg));
-      dispatch(addNotification({ id: Date.now(), type: 'error', message: `Upload failed: ${msg}`, read: false, timestamp: new Date().toISOString() }));
+      // A 402 here already popped the app-wide subscription-gate modal (see
+      // config/axiosSetup.js) — skip the redundant toast on top of it.
+      if (!err?.subscriptionGateHandled) {
+        dispatch(addNotification({ id: Date.now(), type: 'error', message: `Upload failed: ${msg}`, read: false, timestamp: new Date().toISOString() }));
+      }
     }
   };
 
@@ -954,7 +958,11 @@ const Documents = () => {
       } else {
         const msg = err?.response?.data?.message || err?.message || 'Upload failed';
         updateUploadState(id, { status: UPLOAD_STATUS.ERROR, error: msg });
-        dispatch(addNotification({ id: Date.now(), type: 'error', message: `Video upload failed: ${msg}`, read: false, timestamp: new Date().toISOString() }));
+        // A 402 here already popped the app-wide subscription-gate modal (see
+        // config/axiosSetup.js) — skip the redundant toast on top of it.
+        if (!err?.subscriptionGateHandled) {
+          dispatch(addNotification({ id: Date.now(), type: 'error', message: `Video upload failed: ${msg}`, read: false, timestamp: new Date().toISOString() }));
+        }
       }
     } finally {
       videoUploadQueue.current = videoUploadQueue.current.filter(i => i !== id);
@@ -1054,7 +1062,11 @@ const Documents = () => {
       setAudioPage(1);
     } catch (err) {
       const msg = err?.response?.data?.message || err?.message || 'Upload failed.';
-      dispatch(addNotification({ id: Date.now(), type: 'error', message: `Audio upload failed: ${msg}`, read: false, timestamp: new Date().toISOString() }));
+      // A 402 here already popped the app-wide subscription-gate modal (see
+      // config/axiosSetup.js) — skip the redundant toast on top of it.
+      if (!err?.subscriptionGateHandled) {
+        dispatch(addNotification({ id: Date.now(), type: 'error', message: `Audio upload failed: ${msg}`, read: false, timestamp: new Date().toISOString() }));
+      }
     } finally {
       setAudioUploading(false);
     }

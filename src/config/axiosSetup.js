@@ -1,5 +1,7 @@
 import axios from 'axios';
 import api from './api';
+import { store } from '../store';
+import { showSubscriptionGate } from '../features/subscriptionGate/subscriptionGateSlice';
 
 let refreshInFlight = null;
 
@@ -80,6 +82,19 @@ const setupAxiosInterceptors = () => {
             window.location.href = '/login';
           }
         }
+      }
+
+      // `requireActiveSubscription` (backend middleware) returns 402 on any
+      // protected route once a user's trial has expired with no active or
+      // admin-approved subscription behind it. Surface one consistent modal
+      // here rather than leaving each call site to render its own error
+      // toast for what's actually a paywall, not a request failure — and
+      // flag the error so call sites can skip a redundant toast of their own.
+      if (status === 402) {
+        const message = error?.response?.data?.message
+          || 'Your trial has expired. Subscribe to a plan or contact an admin to restore access.';
+        store.dispatch(showSubscriptionGate(message));
+        error.subscriptionGateHandled = true;
       }
 
       return Promise.reject(error);

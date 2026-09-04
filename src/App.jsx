@@ -18,6 +18,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import Workspaces from './pages/Workspaces';
 import { logout, setAuthUser } from './features/auth/authSlice';
 import ToastContainer from './components/ToastContainer';
+import SubscriptionGateModal from './components/SubscriptionGateModal';
 import './App.css';
 
 const PrivateRoute = ({ children }) => {
@@ -87,6 +88,7 @@ function App() {
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
       <ToastContainer />
+      <SubscriptionGateModal />
     </Router>
   );
 }
