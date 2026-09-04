@@ -652,6 +652,19 @@
   color: #4338ca;
 }
 
+.form-group label.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.form-group label.checkbox-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
 .storage-help {
   display: inline-block;
   margin-top: 8px;

@@ -43,6 +43,7 @@ const AdminUsers = () => {
   const [selectedPlanId, setSelectedPlanId] = useState('starter');
   const [planType, setPlanType] = useState('monthly'); // 'monthly' | 'yearly' (Enterprise)
   const [extendDays, setExtendDays] = useState('');
+  const [assignPlanOnReactivate, setAssignPlanOnReactivate] = useState(false);
   const [tenantStorageEndpointAvailable, setTenantStorageEndpointAvailable] = useState(true);
   const [plans, setPlans] = useState([]);
 
@@ -116,6 +117,7 @@ const AdminUsers = () => {
     setSelectedPlanId(currentPlan?.id || 'starter');
     setPlanType(currentPlan?.billingCycle === 'yearly' ? 'yearly' : 'monthly');
     setExtendDays('');
+    setAssignPlanOnReactivate(false);
   };
 
   const plansByType = (type) => plans.filter((plan) => (
@@ -129,6 +131,56 @@ const AdminUsers = () => {
       setSelectedPlanId(matchingPlans[0]?.id || '');
     }
   };
+
+  // Shared Monthly/Enterprise plan picker, reused by the "Set Plan" modal
+  // and (optionally) the "Reactivate Access" modal.
+  const renderPlanSelector = () => (
+    <>
+      <label>Plan Type</label>
+      <div className="plan-type-toggle">
+        <button
+          type="button"
+          className={`plan-type-btn ${planType === 'monthly' ? 'active' : ''}`}
+          onClick={() => handlePlanTypeChange('monthly')}
+        >
+          Monthly
+        </button>
+        <button
+          type="button"
+          className={`plan-type-btn ${planType === 'yearly' ? 'active' : ''}`}
+          onClick={() => handlePlanTypeChange('yearly')}
+        >
+          Enterprise
+        </button>
+      </div>
+
+      <label>{planType === 'yearly' ? 'Enterprise Plan' : 'Monthly Plan'}</label>
+      <select
+        value={selectedPlanId}
+        onChange={(e) => setSelectedPlanId(e.target.value)}
+      >
+        {plansByType(planType).map((plan) => (
+          <option key={plan.id} value={plan.id}>
+            {plan.name}{plan.billingCycle === 'yearly' ? ` — $${plan.priceUsdPerYear}/yr` : ` — $${plan.priceUsdPerMonth}/mo`}
+          </option>
+        ))}
+      </select>
+      <small className="storage-help">
+        Current usage: {formatBytes(selectedUser?.storageUsed || 0)} / {formatBytes(selectedUser?.storageLimit || 0)}
+      </small>
+      {plans.find((plan) => plan.id === selectedPlanId)?.billingCycle === 'yearly' && (
+        <div className="warning-box">
+          <AlertCircle size={20} />
+          <p>
+            This is billed once a year. Assigning it (re)starts a new 1-year period from today —
+            {selectedUser?.billingCycle === 'yearly' && selectedUser?.currentPeriodEnd
+              ? ` current period ends ${formatDate(selectedUser.currentPeriodEnd)}.`
+              : ' the client will need a renewal invoice around this date next year.'}
+          </p>
+        </div>
+      )}
+    </>
+  );
 
   const formatBytes = (bytes = 0) => {
     if (!bytes) return '0 B';
@@ -389,6 +441,13 @@ const AdminUsers = () => {
             body,
             { headers: { Authorization: `Bearer ${token}` } }
           );
+          if (assignPlanOnReactivate) {
+            await updateEnterpriseStorage({
+              tenantId: selectedUser.tenantId,
+              userId: selectedUser._id,
+              planId: selectedPlanId,
+            });
+          }
           setShowModal(false);
           setSelectedUser(null);
           fetchUsers();
@@ -773,49 +832,7 @@ const AdminUsers = () => {
 
             {actionType === 'setStorage' && (
               <div className="form-group">
-                <label>Plan Type</label>
-                <div className="plan-type-toggle">
-                  <button
-                    type="button"
-                    className={`plan-type-btn ${planType === 'monthly' ? 'active' : ''}`}
-                    onClick={() => handlePlanTypeChange('monthly')}
-                  >
-                    Monthly
-                  </button>
-                  <button
-                    type="button"
-                    className={`plan-type-btn ${planType === 'yearly' ? 'active' : ''}`}
-                    onClick={() => handlePlanTypeChange('yearly')}
-                  >
-                    Enterprise
-                  </button>
-                </div>
-
-                <label>{planType === 'yearly' ? 'Enterprise Plan' : 'Monthly Plan'}</label>
-                <select
-                  value={selectedPlanId}
-                  onChange={(e) => setSelectedPlanId(e.target.value)}
-                >
-                  {plansByType(planType).map((plan) => (
-                    <option key={plan.id} value={plan.id}>
-                      {plan.name}{plan.billingCycle === 'yearly' ? ` — $${plan.priceUsdPerYear}/yr` : ` — $${plan.priceUsdPerMonth}/mo`}
-                    </option>
-                  ))}
-                </select>
-                <small className="storage-help">
-                  Current usage: {formatBytes(selectedUser?.storageUsed || 0)} / {formatBytes(selectedUser?.storageLimit || 0)}
-                </small>
-                {plans.find((plan) => plan.id === selectedPlanId)?.billingCycle === 'yearly' && (
-                  <div className="warning-box">
-                    <AlertCircle size={20} />
-                    <p>
-                      This is billed once a year. Assigning it (re)starts a new 1-year period from today —
-                      {selectedUser?.billingCycle === 'yearly' && selectedUser?.currentPeriodEnd
-                        ? ` current period ends ${formatDate(selectedUser.currentPeriodEnd)}.`
-                        : ' the client will need a renewal invoice around this date next year.'}
-                    </p>
-                  </div>
-                )}
+                {renderPlanSelector()}
               </div>
             )}
 
@@ -827,20 +844,39 @@ const AdminUsers = () => {
             )}
 
             {actionType === 'reactivateAccess' && (
-              <div className="form-group">
-                <label>Extend trial by (days) — optional</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={extendDays}
-                  onChange={(e) => setExtendDays(e.target.value)}
-                  placeholder="Leave blank to grant permanent access"
-                />
-                <small className="storage-help">
-                  Leave blank to grant indefinite access (accessLevel set to "Admin Approved").
-                  Enter a number of days to instead reopen a limited trial window.
-                </small>
-              </div>
+              <>
+                <div className="form-group">
+                  <label>Extend trial by (days) — optional</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={extendDays}
+                    onChange={(e) => setExtendDays(e.target.value)}
+                    placeholder="Leave blank to grant permanent access"
+                  />
+                  <small className="storage-help">
+                    Leave blank to grant indefinite access (accessLevel set to "Admin Approved").
+                    Enter a number of days to instead reopen a limited trial window.
+                  </small>
+                </div>
+
+                <div className="form-group">
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={assignPlanOnReactivate}
+                      onChange={(e) => setAssignPlanOnReactivate(e.target.checked)}
+                    />
+                    Also give them the plan they want
+                  </label>
+                </div>
+
+                {assignPlanOnReactivate && (
+                  <div className="form-group">
+                    {renderPlanSelector()}
+                  </div>
+                )}
+              </>
             )}
 
             <div className="modal-actions">
