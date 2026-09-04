@@ -9,8 +9,6 @@ import {
   FileSpreadsheet,
   FileText,
   FileType2,
-  LayoutGrid,
-  List,
   MessageCircle,
   Share2,
   Trash2,
@@ -98,7 +96,6 @@ const iconForFile = (doc) => {
 const FolderBrowser = ({ documents, onView, onConversation, onDownload, onShare, onDelete, onDeleteFolder, rootLabel = 'Root' }) => {
   const tree = useMemo(() => buildTree(documents), [documents]);
   const [currentPath, setCurrentPath] = useState([]);
-  const [viewMode, setViewMode] = useState('list');
 
   const { folders, files } = useMemo(() => getCurrentLevelEntries(tree, currentPath), [tree, currentPath]);
 
@@ -145,20 +142,6 @@ const FolderBrowser = ({ documents, onView, onConversation, onDownload, onShare,
           <button type="button" className="folder-mini-btn" onClick={goUp} disabled={currentPath.length === 0}>
             Up
           </button>
-          <button
-            type="button"
-            className={`folder-mini-btn ${viewMode === 'list' ? 'active' : ''}`}
-            onClick={() => setViewMode('list')}
-          >
-            <List size={14} /> List
-          </button>
-          <button
-            type="button"
-            className={`folder-mini-btn ${viewMode === 'grid' ? 'active' : ''}`}
-            onClick={() => setViewMode('grid')}
-          >
-            <LayoutGrid size={14} /> Grid
-          </button>
         </div>
       </div>
 
@@ -167,13 +150,14 @@ const FolderBrowser = ({ documents, onView, onConversation, onDownload, onShare,
       ) : (
         <>
           {folders.length > 0 && (
-            <div className={`folder-entry-wrap ${viewMode === 'grid' ? 'grid' : 'list'}`}>
+            <div className="folder-entry-wrap grid">
               {folders.map((folder) => (
                 <div key={folder.fullPath} className="folder-entry folder-entry-folder">
                   <button type="button" className="folder-entry-folder-main" onClick={() => openFolder(folder.name)}>
-                    <FolderIconGraphic size={viewMode === 'grid' ? 84 : 26} />
-                    <span className="folder-entry-title">{folder.name}</span>
-                    <span className="folder-entry-sub">Folder</span>
+                    <span className="folder-icon-stack">
+                      <FolderIconGraphic size={84} />
+                      <span className="folder-icon-label">{folder.name}</span>
+                    </span>
                   </button>
                   <button
                     type="button"
@@ -192,7 +176,7 @@ const FolderBrowser = ({ documents, onView, onConversation, onDownload, onShare,
           )}
 
           {files.length > 0 && (
-            <div className={`folder-entry-wrap ${viewMode === 'grid' ? 'grid' : 'list'}`}>
+            <div className="folder-entry-wrap list">
               {files.map((doc) => (
                 <div
                   key={doc.id || doc._id}

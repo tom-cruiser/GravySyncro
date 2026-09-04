@@ -1,86 +1,76 @@
 import React, { useId } from 'react';
 
 /**
- * Skeuomorphic/neumorphic dark folder graphic: a solid charcoal back panel,
- * a frosted-glass front pocket (simulated backdrop-blur + translucent tint)
- * that shows documents tucked inside, and two crisp documents peeking out
- * the top. Used across the Documents folder grid/list views.
+ * Glossy dark 3D folder graphic: a single-path classic folder silhouette
+ * (a tab with a real diagonal bevel down into the body, like a manila
+ * folder) in a top-to-bottom charcoal gradient, with a subtle front-flap
+ * fold seam and two crisp documents peeking out from behind the tab. Used
+ * across the Documents folder grid/list views.
  */
+const FOLDER_PATH =
+  'M20,58 Q20,30 44,30 L96,30 Q110,30 116,42 L128,58 Q134,70 148,70 ' +
+  'L196,70 Q220,70 220,94 L220,166 Q220,190 196,190 L44,190 Q20,190 20,166 Z';
+
 const FolderIconGraphic = ({ size = 84, className = '' }) => {
   const rawId = useId();
   const uid = rawId.replace(/[^a-zA-Z0-9]/g, '');
   const gradId = `folderGrad-${uid}`;
   const bodyClipId = `folderBodyClip-${uid}`;
-  const flapClipId = `folderFlapClip-${uid}`;
-  const flapTintId = `folderFlapTint-${uid}`;
   const blurId = `folderBlur-${uid}`;
 
   return (
     <svg
       width={size}
-      height={size}
-      viewBox="0 0 240 220"
+      height={Math.round((size * 220) / 250)}
+      viewBox="-10 -10 250 220"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={`folder-graphic-svg ${className}`}
       aria-hidden="true"
     >
       <defs>
-        <linearGradient id={gradId} x1="10%" y1="0%" x2="90%" y2="100%">
-          <stop offset="0%" stopColor="#6b6c74" />
-          <stop offset="45%" stopColor="#34353b" />
-          <stop offset="100%" stopColor="#0a0a0c" />
-        </linearGradient>
-        <linearGradient id={flapTintId} x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="#dfe1e6" stopOpacity="0.14" />
-          <stop offset="100%" stopColor="#dfe1e6" stopOpacity="0.03" />
+        <linearGradient id={gradId} x1="0" y1="30" x2="0" y2="190" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#66676f" />
+          <stop offset="40%" stopColor="#323337" />
+          <stop offset="75%" stopColor="#131315" />
+          <stop offset="100%" stopColor="#050506" />
         </linearGradient>
         <clipPath id={bodyClipId}>
-          <rect x="20" y="76" width="200" height="122" rx="32" />
+          <path d={FOLDER_PATH} />
         </clipPath>
-        {/* contour-cut front pocket: the wavy region below the flap seam */}
-        <clipPath id={flapClipId}>
-          <path d="M20,118 Q100,136 220,108 L220,166 Q220,198 188,198 L52,198 Q20,198 20,166 Z" />
-        </clipPath>
-        <filter id={blurId} x="-30%" y="-30%" width="160%" height="160%">
-          <feGaussianBlur stdDeviation="4.5" />
+        <filter id={blurId} x="-60%" y="-60%" width="220%" height="220%">
+          <feGaussianBlur stdDeviation="16" />
         </filter>
       </defs>
 
-      {/* crisp documents peeking out */}
-      <g transform="rotate(-4 86 86)">
-        <rect x="54" y="20" width="64" height="132" rx="8" fill="#e9eaee" stroke="#d3d5da" strokeWidth="1" />
-      </g>
-      <g transform="rotate(3 131 81)">
-        <rect x="98" y="14" width="66" height="134" rx="8" fill="#fbfbfc" stroke="#dcdfe4" strokeWidth="1" />
-        <polygon points="148,14 164,14 164,30" fill="#d8dade" />
-        <line x1="148" y1="14" x2="164" y2="30" stroke="#c3c6cc" strokeWidth="1" />
-        <line x1="110" y1="44" x2="148" y2="44" stroke="#c7cad0" strokeWidth="3" strokeLinecap="round" />
-        <line x1="110" y1="54" x2="154" y2="54" stroke="#c7cad0" strokeWidth="3" strokeLinecap="round" />
-        <line x1="110" y1="64" x2="138" y2="64" stroke="#c7cad0" strokeWidth="3" strokeLinecap="round" />
+      {/* back document */}
+      <g transform="rotate(-3 75 44)">
+        <rect x="46" y="-6" width="58" height="100" rx="8" fill="#eaebef" stroke="#d7d9de" strokeWidth="1" />
       </g>
 
-      {/* solid charcoal back panel / base */}
-      <rect x="20" y="76" width="200" height="122" rx="32" fill={`url(#${gradId})`} />
-
-      {/* frosted-glass front pocket: blurred paper hint + translucent tint + edge highlight */}
-      <g clipPath={`url(#${flapClipId})`}>
-        <g filter={`url(#${blurId})`} opacity="0.3">
-          <g transform="rotate(-4 86 86)">
-            <rect x="54" y="20" width="64" height="132" rx="8" fill="#eceef2" />
-          </g>
-          <g transform="rotate(3 131 81)">
-            <rect x="98" y="14" width="66" height="134" rx="8" fill="#fcfcfd" />
-          </g>
-        </g>
-        <rect x="20" y="76" width="200" height="122" fill={`url(#${flapTintId})`} />
-        <path d="M18,118 Q100,137 222,107" fill="none" stroke="#ffffff" strokeOpacity="0.45" strokeWidth="1.5" />
+      {/* front document, with text-line detail */}
+      <g transform="rotate(3 96 39)">
+        <rect x="66" y="-12" width="60" height="102" rx="8" fill="#fbfbfc" stroke="#dfe1e6" strokeWidth="1" />
+        <line x1="78" y1="8" x2="106" y2="8" stroke="#c7cad0" strokeWidth="3" strokeLinecap="round" />
+        <line x1="78" y1="18" x2="112" y2="18" stroke="#c7cad0" strokeWidth="3" strokeLinecap="round" />
+        <line x1="78" y1="28" x2="98" y2="28" stroke="#c7cad0" strokeWidth="3" strokeLinecap="round" />
       </g>
 
-      {/* overall glass sheen across the whole folder */}
+      {/* folder body: single-path silhouette with tab + diagonal bevel */}
+      <path d={FOLDER_PATH} fill={`url(#${gradId})`} />
+
       <g clipPath={`url(#${bodyClipId})`}>
-        <polygon points="20,76 120,76 60,198 20,198" fill="#ffffff" opacity="0.06" />
+        {/* soft highlight for volume */}
+        <g filter={`url(#${blurId})`}>
+          <ellipse cx="60" cy="90" rx="70" ry="32" fill="#ffffff" opacity="0.13" transform="rotate(-12 60 90)" />
+        </g>
+        {/* front-flap fold seam */}
+        <path d="M20,116 Q120,134 220,110" fill="none" stroke="#000000" strokeOpacity="0.3" strokeWidth="1.5" />
+        <path d="M20,113 Q120,131 220,107" fill="none" stroke="#ffffff" strokeOpacity="0.1" strokeWidth="1" />
       </g>
+
+      {/* rim highlight along the tab's top-left edge */}
+      <path d="M22,44 Q20,30 34,30" fill="none" stroke="#ffffff" strokeOpacity="0.25" strokeWidth="1.5" />
     </svg>
   );
 };
