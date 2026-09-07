@@ -21,6 +21,11 @@ export default {
     documents: {
       list: (params = '') => getApiUrl(`/documents${params}`),
       upload: () => getApiUrl('/documents/upload'),
+      uploadInitiate: () => getApiUrl('/documents/uploads/initiate'),
+      uploadPartUrl: (id) => getApiUrl(`/documents/uploads/${id}/part-url`),
+      uploadParts: (id) => getApiUrl(`/documents/uploads/${id}/parts`),
+      uploadComplete: (id) => getApiUrl(`/documents/uploads/${id}/complete`),
+      uploadAbort: (id) => getApiUrl(`/documents/uploads/${id}/abort`),
       dashboardStats: () => getApiUrl('/documents/dashboard-stats'),  // ✓ matches backend
       byId: (id) => getApiUrl(`/documents/${id}`),
       versions: (id) => getApiUrl(`/documents/${id}/versions`),

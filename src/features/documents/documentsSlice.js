@@ -42,10 +42,12 @@ const documentsSlice = createSlice({
       state.uploadProgress = action.payload;
     },
     uploadDocumentSuccess: (state, action) => {
-      state.isUploading = false;
-      state.uploadProgress = 100;
       state.documents = [action.payload, ...state.documents];
       state.recentDocuments = [action.payload, ...state.recentDocuments.slice(0, 4)];
+    },
+    uploadDocumentComplete: (state) => {
+      state.isUploading = false;
+      state.uploadProgress = 100;
     },
     uploadDocumentFailure: (state, action) => {
       state.isUploading = false;
@@ -91,6 +93,7 @@ export const {
   uploadDocumentStart,
   uploadDocumentProgress,
   uploadDocumentSuccess,
+  uploadDocumentComplete,
   uploadDocumentFailure,
   selectDocument,
   deleteDocument,

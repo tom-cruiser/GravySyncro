@@ -125,6 +125,9 @@ const DocumentCard = ({ document: doc, onDownload, onShare, onDelete, onView, on
 
       <div className="document-card-body">
         <h3 className="document-title">{doc.title}</h3>
+        {doc.description ? (
+          <p className="document-description">{doc.description}</p>
+        ) : null}
         <div className="document-meta">
           <span className="document-type" style={{ backgroundColor: `${getTypeColor(doc.type)}20`, color: getTypeColor(doc.type) }}>
             {doc.type}

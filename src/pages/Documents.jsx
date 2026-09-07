@@ -13,7 +13,7 @@ import {
   uploadDocumentStart,
   uploadDocumentProgress,
   uploadDocumentSuccess,
-  uploadDocumentFailure,
+  uploadDocumentComplete,
   deleteDocument,
   updateDocument,
 } from '../features/documents/documentsSlice';
@@ -43,6 +43,8 @@ const FOLDER_VIEW_FETCH_LIMIT = 200;
 const MAX_VIDEO_SIZE = 1.5 * 1024 * 1024 * 1024; // 1.5 GB
 const MAX_CONCURRENT_VIDEO_UPLOADS = 3;
 const CHUNK_SIZE = 10 * 1024 * 1024; // 10 MB parts
+const MAX_CONCURRENT_DOCUMENT_UPLOADS = 4;
+const DOCUMENT_PART_SIZE = 10 * 1024 * 1024; // 10 MB parts
 
 const ALLOWED_VIDEO_MIME = new Set([
   'video/mp4', 'video/quicktime', 'video/x-msvideo',
@@ -778,46 +780,130 @@ const Documents = () => {
     if (!uploadFiles.length) return;
     dispatch(uploadDocumentStart());
     try {
-      const totalBytes = uploadFiles.reduce((sum, file) => sum + (file.size || 0), 0);
-      let uploadedBytesBaseline = 0;
+      const files = [...uploadFiles];
+      const totalBytes = files.reduce((sum, file) => sum + (file.size || 0), 0);
+      const progressMap = new Map();
+      let nextIndex = 0;
+      let failureCount = 0;
 
-      for (let i = 0; i < uploadFiles.length; i++) {
-        const file = uploadFiles[i];
+      const updateAggregateProgress = () => {
+        const uploadedBytes = files.reduce((sum, file, index) => {
+          const fileProgress = progressMap.get(index) || 0;
+          return sum + ((file.size || 0) * fileProgress);
+        }, 0);
+        const percent = totalBytes > 0 ? Math.min(99, Math.round((uploadedBytes / totalBytes) * 100)) : 0;
+        dispatch(uploadDocumentProgress(percent));
+      };
+
+      const uploadOneDocument = async (file, index) => {
         const relativePath = file.webkitRelativePath || file.name;
         const segs = relativePath.split('/').filter(Boolean);
         const derivedFolderPath = segs.length > 1 ? segs.slice(0, -1).join('/') : '';
-        const resolvedTitle = uploadFiles.length > 1 ? file.name : (metadata.title || file.name);
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('title', resolvedTitle);
-        formData.append('description', metadata.description || '');
-        formData.append('type', metadata.type || 'General');
-        formData.append('category', metadata.type || 'General');
-        formData.append('folderPath', derivedFolderPath);
-        formData.append('relativePath', relativePath);
-        if (selectedWorkspaceId) formData.append('workspaceId', selectedWorkspaceId);
+        const resolvedTitle = files.length > 1 ? file.name : (metadata.title || file.name);
+        let uploadSessionId = null;
 
-        const response = await axios.post(`${import.meta.env.VITE_API_URL}/documents`, formData, {
-          headers: authHeaders(),
-          onUploadProgress: (event) => {
-            const fileProgress = event.total ? (event.loaded / event.total) : 0;
-            const aggregateBytes = uploadedBytesBaseline + (file.size * fileProgress);
-            const percent = totalBytes > 0 ? Math.min(99, Math.round((aggregateBytes / totalBytes) * 100)) : 0;
-            dispatch(uploadDocumentProgress(percent));
-          },
-        });
+        progressMap.set(index, 0);
+        updateAggregateProgress();
 
-        uploadedBytesBaseline += file.size;
-        const afterFilePercent = totalBytes > 0
-          ? Math.min(99, Math.round((uploadedBytesBaseline / totalBytes) * 100))
-          : 0;
-        dispatch(uploadDocumentProgress(afterFilePercent));
+        try {
+          const initResponse = await axios.post(api.endpoints.documents.uploadInitiate(), {
+            fileName: file.name,
+            mimeType: file.type || 'application/octet-stream',
+            fileSize: file.size,
+            title: resolvedTitle,
+            description: metadata.description || '',
+            type: metadata.type || 'General',
+            category: metadata.type || 'General',
+            folderId: null,
+            folderPath: derivedFolderPath,
+            relativePath,
+            workspaceId: selectedWorkspaceId || activeWorkspaceId || null,
+          }, {
+            headers: authHeaders(),
+          });
 
-        dispatch(uploadDocumentSuccess(mapDocument(response.data?.data?.document || {})));
-        dispatch(addNotification({ id: Date.now() + i, type: 'success', message: `${relativePath} uploaded successfully`, read: false, timestamp: new Date().toISOString() }));
+          const session = initResponse.data?.data || {};
+          uploadSessionId = session.uploadId;
+          const partSize = session.partSize || DOCUMENT_PART_SIZE;
+          const totalParts = session.totalParts || Math.max(1, Math.ceil(file.size / partSize));
+          const completedParts = [];
+
+          for (let partNumber = 1; partNumber <= totalParts; partNumber += 1) {
+            const start = (partNumber - 1) * partSize;
+            const end = Math.min(start + partSize, file.size);
+            const chunk = file.slice(start, end);
+
+            const partResponse = await axios.get(api.endpoints.documents.uploadPartUrl(uploadSessionId), {
+              headers: authHeaders(),
+              params: { partNumber },
+            });
+
+            const presignedUrl = partResponse.data?.data?.url;
+            const putResponse = await axios.put(presignedUrl, chunk, {
+              headers: { 'Content-Type': file.type || 'application/octet-stream' },
+              onUploadProgress: (event) => {
+                const progress = event.total ? (event.loaded / event.total) : 0;
+                const fileProgress = Math.min(0.95, ((start + (chunk.size * progress)) / file.size));
+                progressMap.set(index, fileProgress);
+                updateAggregateProgress();
+              },
+            });
+
+            const etag = putResponse.headers?.etag || putResponse.headers?.ETag || '';
+            completedParts.push({ PartNumber: partNumber, ETag: String(etag).replaceAll('"', '') });
+            progressMap.set(index, Math.min(0.95, end / file.size));
+            updateAggregateProgress();
+          }
+
+          const completeResponse = await axios.post(api.endpoints.documents.uploadComplete(uploadSessionId), {
+            parts: completedParts,
+            title: resolvedTitle,
+            description: metadata.description || '',
+            type: metadata.type || 'General',
+            category: metadata.type || 'General',
+            folderId: null,
+            folderPath: derivedFolderPath,
+            relativePath,
+          }, {
+            headers: authHeaders(),
+          });
+
+          progressMap.set(index, 1);
+          updateAggregateProgress();
+
+          const uploadedDocument = mapDocument(completeResponse.data?.data?.document || {});
+          dispatch(uploadDocumentSuccess(uploadedDocument));
+          dispatch(addNotification({ id: Date.now() + index, type: 'success', message: `${relativePath} uploaded successfully`, read: false, timestamp: new Date().toISOString() }));
+        } catch (err) {
+          failureCount += 1;
+          const msg = err?.response?.data?.message || err?.message || 'Upload failed.';
+          dispatch(addNotification({ id: Date.now() + index, type: 'error', message: `${relativePath} upload failed: ${msg}`, read: false, timestamp: new Date().toISOString() }));
+          if (uploadSessionId) {
+            try {
+              await axios.post(api.endpoints.documents.uploadAbort(uploadSessionId), {}, {
+                headers: authHeaders(),
+              });
+            } catch (_) {}
+          }
+        }
+      };
+
+      const worker = async () => {
+        while (nextIndex < files.length) {
+          const currentIndex = nextIndex;
+          nextIndex += 1;
+          await uploadOneDocument(files[currentIndex], currentIndex);
+        }
+      };
+
+      const workerCount = Math.min(MAX_CONCURRENT_DOCUMENT_UPLOADS, files.length);
+      await Promise.all(Array.from({ length: workerCount }, () => worker()));
+
+      dispatch(uploadDocumentComplete());
+      if (failureCount > 0) {
+        dispatch(addNotification({ id: Date.now(), type: 'warning', message: `${failureCount} file(s) failed during upload.`, read: false, timestamp: new Date().toISOString() }));
       }
 
-      dispatch(uploadDocumentProgress(100));
       setShowUploadModal(false);
       setUploadFiles([]);
       setMetadata({ title: '', description: '', type: 'General' });
@@ -826,12 +912,12 @@ const Documents = () => {
       fetchDocuments(1);
     } catch (err) {
       const msg = err?.response?.data?.message || err?.message || 'Upload failed.';
-      dispatch(uploadDocumentFailure(msg));
       // A 402 here already popped the app-wide subscription-gate modal (see
       // config/axiosSetup.js) — skip the redundant toast on top of it.
       if (!err?.subscriptionGateHandled) {
         dispatch(addNotification({ id: Date.now(), type: 'error', message: `Upload failed: ${msg}`, read: false, timestamp: new Date().toISOString() }));
       }
+      dispatch(uploadDocumentComplete());
     }
   };
 
