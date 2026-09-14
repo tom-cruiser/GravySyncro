@@ -33,6 +33,7 @@ const Billing = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [actionError, setActionError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [successInvoiceNumber, setSuccessInvoiceNumber] = useState('');
 
   const currentPlanGb = Number(tenantStorage?.storagePlanGb || user?.storagePlanGb || 0) || null;
 

@@ -138,12 +138,13 @@
 .users-table-container {
   background: var(--color-card-bg);
   border-radius: 12px;
-  overflow: hidden;
+  overflow-x: auto;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .users-table {
   width: 100%;
+  min-width: 1100px;
   border-collapse: collapse;
 }
 
@@ -159,6 +160,10 @@
   color: var(--color-text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  position: sticky;
+  top: 0;
+  background: var(--color-background);
+  z-index: 1;
 }
 
 .users-table td {
@@ -772,10 +777,6 @@
 
   .search-box {
     min-width: 100%;
-  }
-
-  .users-table-container {
-    overflow-x: auto;
   }
 
   .users-table {
