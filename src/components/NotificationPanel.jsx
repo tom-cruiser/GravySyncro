@@ -176,6 +176,12 @@ const NotificationPanel = ({ onClose }) => {
     ) {
       // Navigate to the admin Contact Messages tab
       navigate("/admin", { state: { activeTab: "contactMessages" } });
+    } else if (
+      notification.type === "plan_change_requested" &&
+      user?.role === "Admin"
+    ) {
+      // Navigate to the admin Plan Requests tab
+      navigate("/admin", { state: { activeTab: "planRequests" } });
     } else if (notification.relatedDocument) {
       // Navigate to document if available
       navigate("/documents");

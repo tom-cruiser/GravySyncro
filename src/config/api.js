@@ -51,6 +51,9 @@ export default {
       tenantStorageLimit: (tenantId) => getApiUrl(`/admin/tenants/${tenantId}/storage-limit`),
       activityLogs: (params = '') => getApiUrl(`/admin/activities${params}`),
       systemHealth: () => getApiUrl('/admin/system/health'),
+      planRequests: (params = '') => getApiUrl(`/admin/plan-requests${params}`),
+      approvePlanRequest: (id) => getApiUrl(`/admin/plan-requests/${id}/approve`),
+      rejectPlanRequest: (id) => getApiUrl(`/admin/plan-requests/${id}/reject`),
     },
     notifications: {
       list: () => getApiUrl('/notifications'),
@@ -90,6 +93,7 @@ export default {
       profile: () => getApiUrl('/users/profile'),
       subscriptionPlans: () => getApiUrl('/users/subscription-plans'),
       updateSubscriptionPlan: () => getApiUrl('/users/subscription-plan'),
+      pendingPlanRequest: () => getApiUrl('/users/subscription-plan/request'),
     },
     billing: {
       invoices: (params = '') => getApiUrl(`/billing/invoices${params}`),

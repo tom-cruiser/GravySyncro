@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { Check, Zap, Shield, HardDrive, Loader2, Mail } from 'lucide-react';
 import { io } from 'socket.io-client';
 import axios from 'axios';
 import api from '../config/api';
-import { setAuthUser } from '../features/auth/authSlice';
 import './Billing.css';
 
 // Cosmetic details the backend doesn't need to know about (icon/color per plan id).
@@ -20,11 +19,11 @@ const PLAN_PRESENTATION = {
 const GB_IN_BYTES = 1024 * 1024 * 1024;
 
 const Billing = () => {
-  const dispatch = useDispatch();
   const { user, token } = useSelector((state) => state.auth);
 
   const [plans, setPlans] = useState([]);
   const [tenantStorage, setTenantStorage] = useState(null);
+  const [pendingRequest, setPendingRequest] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
 
@@ -33,7 +32,6 @@ const Billing = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [actionError, setActionError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-  const [successInvoiceNumber, setSuccessInvoiceNumber] = useState('');
 
   const currentPlanGb = Number(tenantStorage?.storagePlanGb || user?.storagePlanGb || 0) || null;
 
@@ -43,11 +41,14 @@ const Billing = () => {
     setLoadError('');
 
     try {
-      const [plansResponse, profileResponse] = await Promise.all([
+      const [plansResponse, profileResponse, pendingResponse] = await Promise.all([
         axios.get(api.endpoints.users.subscriptionPlans(), {
           headers: { Authorization: `Bearer ${token}` },
         }),
         axios.get(api.endpoints.users.profile(), {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        axios.get(api.endpoints.users.pendingPlanRequest(), {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
@@ -60,7 +61,10 @@ const Billing = () => {
       const monthlyPlans = (plansResponse?.data?.data?.plans || [])
         .filter((plan) => plan.billingCycle !== 'yearly');
       setPlans(monthlyPlans);
-      setTenantStorage(profileResponse?.data?.data?.tenantStorage || null);
+
+      const freshTenantStorage = profileResponse?.data?.data?.tenantStorage || null;
+      setTenantStorage(freshTenantStorage);
+      setPendingRequest(pendingResponse?.data?.data?.request || null);
     } catch (error) {
       console.error('Failed to load billing data:', error);
       setLoadError('Could not load subscription plans. Please refresh the page.');
@@ -97,13 +101,20 @@ const Billing = () => {
       }));
     });
 
+    // An admin approved or rejected our pending request — re-fetch rather
+    // than trust the socket payload, so we pick up the canonical status,
+    // the refreshed plan/storage limit, and (for a rejection) the admin's note.
+    socket.on('tenant:plan-request-resolved', () => {
+      loadBillingData();
+    });
+
     return () => {
       socket.disconnect();
     };
-  }, [token]);
+  }, [token, loadBillingData]);
 
   const handleChoosePlan = (plan) => {
-    if (plan.storageGb === currentPlanGb) return;
+    if (plan.storageGb === currentPlanGb || pendingRequest) return;
     setSelectedPlan(plan);
     setActionError('');
     setShowConfirm(true);
@@ -128,27 +139,18 @@ const Billing = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      const updatedTenant = response?.data?.data?.tenant;
-      if (updatedTenant) {
-        setTenantStorage((prev) => ({ ...prev, ...updatedTenant }));
-      }
-
-      if (user) {
-        dispatch(setAuthUser({
-          ...user,
-          storagePlanGb: selectedPlan.storageGb,
-          storageLimit: updatedTenant?.storageLimit,
-        }));
-      }
-
-      setSuccessMessage(`You're now on the ${selectedPlan.name} plan.`);
+      setPendingRequest(response?.data?.data?.request || null);
+      setSuccessMessage(
+        response?.data?.message
+        || `Your request to switch to the ${selectedPlan.name} plan has been sent for admin approval.`
+      );
       setShowConfirm(false);
       setSelectedPlan(null);
-      setTimeout(() => setSuccessMessage(''), 5000);
+      setTimeout(() => setSuccessMessage(''), 8000);
     } catch (error) {
-      console.error('Failed to update subscription plan:', error);
+      console.error('Failed to request subscription plan change:', error);
       setActionError(
-        error?.response?.data?.message || 'Could not switch plans. Please try again.'
+        error?.response?.data?.message || 'Could not send the plan change request. Please try again.'
       );
     } finally {
       setIsSaving(false);
@@ -172,6 +174,15 @@ const Billing = () => {
       )}
       {loadError && (
         <div className="billing-banner billing-banner-error">{loadError}</div>
+      )}
+
+      {pendingRequest && (
+        <div className="billing-banner billing-banner-pending">
+          <span>
+            Your request to switch to the <strong>{pendingRequest.requestedPlanName}</strong> plan
+            ({pendingRequest.requestedPlanGb} GB) is pending admin approval.
+          </span>
+        </div>
       )}
 
       {!loading && tenantStorage && (
@@ -202,17 +213,21 @@ const Billing = () => {
             const presentation = PLAN_PRESENTATION[plan.id] || { icon: HardDrive, color: 'var(--primary)' };
             const Icon = presentation.icon;
             const isCurrent = plan.storageGb === currentPlanGb;
+            const isRequested = pendingRequest?.requestedPlanGb === plan.storageGb;
 
             return (
               <div
                 key={plan.id}
                 className={`plan-card ${plan.popular ? 'popular' : ''} ${isCurrent ? 'current' : ''}`}
               >
-                {plan.popular && !isCurrent && (
+                {plan.popular && !isCurrent && !isRequested && (
                   <div className="popular-badge">Most Popular</div>
                 )}
                 {isCurrent && (
                   <div className="popular-badge current-badge">Current Plan</div>
+                )}
+                {isRequested && !isCurrent && (
+                  <div className="popular-badge pending-badge">Pending Approval</div>
                 )}
 
                 <div className="plan-icon" style={{ background: `${presentation.color}18`, color: presentation.color }}>
@@ -242,9 +257,13 @@ const Billing = () => {
                 <button
                   className={`plan-btn ${plan.popular ? 'plan-btn-popular' : ''}`}
                   onClick={() => handleChoosePlan(plan)}
-                  disabled={isCurrent}
+                  disabled={isCurrent || Boolean(pendingRequest)}
                 >
-                  {isCurrent ? 'Current Plan' : 'Switch to this plan'}
+                  {isCurrent
+                    ? 'Current Plan'
+                    : isRequested
+                      ? 'Requested — Awaiting Approval'
+                      : 'Request this plan'}
                 </button>
               </div>
             );
@@ -275,25 +294,26 @@ const Billing = () => {
 
       <div className="billing-note">
         <Shield size={16} />
-        <span>Switching plans updates the shared storage pool for everyone in your organization immediately.</span>
+        <span>Plan changes are reviewed by your workspace admin before they take effect.</span>
       </div>
 
       {showConfirm && selectedPlan && (
         <>
-          <div className="modal-overlay" onClick={handleConfirmClose} />
-          <div className="modal">
-            <h3>Switch to {selectedPlan.name}?</h3>
+          <div className="billing-modal-overlay" onClick={handleConfirmClose} />
+          <div className="billing-modal">
+            <h3>Request {selectedPlan.name}?</h3>
             <p>
-              This changes your organization's shared storage pool to{' '}
-              <strong>{selectedPlan.storageGb} GB</strong> for every team member, effective immediately.
+              This sends a request to your workspace admin to switch your organization's shared
+              storage pool to <strong>{selectedPlan.storageGb} GB</strong>. Everyone on your team
+              keeps their current plan until an admin approves it.
             </p>
-            {actionError && <p className="modal-error">{actionError}</p>}
-            <div className="modal-actions">
+            {actionError && <p className="billing-modal-error">{actionError}</p>}
+            <div className="billing-modal-actions">
               <button className="btn-ghost" onClick={handleConfirmClose} disabled={isSaving}>
                 Cancel
               </button>
               <button className="btn-primary" onClick={handleConfirmChange} disabled={isSaving}>
-                {isSaving ? 'Switching…' : 'Confirm Switch'}
+                {isSaving ? 'Sending…' : 'Send Request'}
               </button>
             </div>
           </div>

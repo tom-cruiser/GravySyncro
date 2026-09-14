@@ -15,11 +15,13 @@ import {
   Globe,
   Download,
   Filter,
+  ClipboardList,
 } from 'lucide-react';
 import axios from 'axios';
 import { useSelector } from 'react-redux';
 import api from '../config/api';
 import AdminUsers from '../components/AdminUsers';
+import AdminPlanRequests from '../components/AdminPlanRequests';
 import AdminTenants from '../components/AdminTenants';
 import AdminActivityLogs from '../components/AdminActivityLogs';
 import AdminMessages from '../components/AdminMessages';
@@ -151,6 +153,13 @@ const AdminDashboard = () => {
         >
           <Users size={18} />
           Users
+        </button>
+        <button
+          className={`admin-tab ${activeTab === 'planRequests' ? 'active' : ''}`}
+          onClick={() => setActiveTab('planRequests')}
+        >
+          <ClipboardList size={18} />
+          Plan Requests
         </button>
         <button
           className={`admin-tab ${activeTab === 'tenants' ? 'active' : ''}`}
@@ -285,6 +294,12 @@ const AdminDashboard = () => {
       {activeTab === 'users' && (
         <div className="admin-tab-content">
           <AdminUsers />
+        </div>
+      )}
+
+      {activeTab === 'planRequests' && (
+        <div className="admin-tab-content">
+          <AdminPlanRequests />
         </div>
       )}
 

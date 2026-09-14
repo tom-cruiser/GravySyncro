@@ -1,0 +1,375 @@
+.admin-plan-requests {
+  padding: 24px;
+}
+
+.plan-requests-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.plan-requests-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 24px;
+  color: var(--color-text);
+  margin-bottom: 4px;
+}
+
+.plan-requests-header p {
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-card-bg);
+  color: var(--color-text);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--color-background);
+}
+
+.plan-requests-filters {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.filter-pill {
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-card-bg);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.filter-pill:hover {
+  background: var(--color-background);
+}
+
+.filter-pill.active {
+  background: var(--primary, #667eea);
+  border-color: var(--primary, #667eea);
+  color: #fff;
+}
+
+.plan-requests-table-container {
+  background: var(--color-card-bg);
+  border-radius: 12px;
+  overflow-x: auto;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.plan-requests-table {
+  width: 100%;
+  min-width: 900px;
+  border-collapse: collapse;
+}
+
+.plan-requests-table thead {
+  background: var(--color-background);
+}
+
+.plan-requests-table th {
+  padding: 16px;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: sticky;
+  top: 0;
+  background: var(--color-background);
+  z-index: 1;
+}
+
+.plan-requests-table td {
+  padding: 16px;
+  border-top: 1px solid var(--color-border);
+  font-size: 14px;
+  color: var(--color-text);
+  vertical-align: top;
+}
+
+.plan-requests-table tbody tr:hover {
+  background: var(--color-background);
+}
+
+.requester-cell .requester-name {
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.requester-cell small {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.tenant-id {
+  font-family: monospace;
+  font-size: 11px;
+  background: var(--color-background);
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.plan-change-cell {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.plan-change-cell strong {
+  color: var(--color-text);
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status-pending {
+  background: #fffbeb;
+  color: #b45309;
+}
+
+.status-approved {
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+.status-rejected {
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.reject-note {
+  display: block;
+  margin-top: 6px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-style: italic;
+}
+
+.requests-col-action {
+  width: 100px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-icon {
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-icon:hover:not(:disabled) {
+  background: var(--color-background);
+  transform: translateY(-2px);
+}
+
+.btn-icon:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-icon.btn-success {
+  color: #16a34a;
+  border-color: #bbf7d0;
+}
+
+.btn-icon.btn-success:hover:not(:disabled) {
+  background: #f0fdf4;
+}
+
+.btn-icon.btn-danger {
+  color: #dc2626;
+  border-color: #fecaca;
+}
+
+.btn-icon.btn-danger:hover:not(:disabled) {
+  background: #fef2f2;
+}
+
+.no-results {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: var(--color-text-secondary);
+  gap: 16px;
+  text-align: center;
+}
+
+.loading {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--color-text-secondary);
+  font-size: 16px;
+}
+
+/* ── Reject modal ─────────────────────────────────────── */
+/* Deliberately namespaced (plan-request-modal-*, not the generic
+   .modal/.modal-overlay several other files in this app already use
+   unscoped) — see the note in Billing.css: an unscoped ".modal-overlay"
+   in Workspaces.css already bled into another page's modal this way and
+   silently swallowed clicks. */
+
+.plan-request-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.74);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1300;
+  backdrop-filter: blur(2px);
+}
+
+.plan-request-modal {
+  background: #ffffff;
+  border: 1px solid #dbe2ea;
+  border-radius: 14px;
+  padding: 24px;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 24px 72px rgba(2, 6, 23, 0.42);
+}
+
+.plan-request-modal h3 {
+  margin: 0 0 12px 0;
+  color: #0f172a;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.plan-request-modal p {
+  color: #334155;
+  font-size: 15px;
+  line-height: 1.55;
+  margin-bottom: 20px;
+}
+
+.plan-request-modal p strong {
+  color: #0f172a;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.form-group textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  color: #0f172a;
+  background: #ffffff;
+  resize: vertical;
+}
+
+.form-group textarea:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+}
+
+.plan-request-modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.plan-request-modal .btn-secondary,
+.plan-request-modal .btn-primary {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.plan-request-modal .btn-secondary {
+  background: #f8fafc;
+  color: #0f172a;
+  border: 1px solid #cbd5e1;
+  font-weight: 600;
+}
+
+.plan-request-modal .btn-secondary:hover:not(:disabled) {
+  background: #e2e8f0;
+}
+
+.plan-request-modal .btn-primary {
+  background: #4f46e5;
+  color: white;
+  font-weight: 700;
+}
+
+.plan-request-modal .btn-primary.btn-danger {
+  background: #dc2626;
+}
+
+.plan-request-modal .btn-primary.btn-danger:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
+.plan-request-modal .btn-secondary:disabled,
+.plan-request-modal .btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .plan-requests-table {
+    min-width: 760px;
+  }
+}
