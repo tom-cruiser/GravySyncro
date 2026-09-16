@@ -11,6 +11,19 @@ import { enqueueItems, updateQueueItem, prependMyFile } from './plusFilesSlice';
 // progress into the plusFiles Redux slice (which itself persists across
 // navigation) no matter where the user is in the app.
 const CONCURRENCY = 3;
+// Transport-level failures (no HTTP response at all — the browser dropped
+// the request before the server got a chance to answer) get retried a few
+// times with backoff before being marked failed. In practice these show up
+// under very large batches (thousands of files queued at once) as sporadic
+// ERR_BLOB_OUT_OF_MEMORY on the larger files specifically — Chromium's
+// internal blob storage getting squeezed by the sheer number of File/Blob
+// references alive at once, independent of file content or byte content
+// (reproduced with genuinely distinct per-file buffers, so it isn't a
+// quirk of shared memory). The pressure is transient: it clears as earlier
+// uploads finish and release their blobs, so a short retry usually
+// succeeds without the user needing to notice and click retry themselves.
+const MAX_AUTO_RETRIES = 4;
+const AUTO_RETRY_BASE_DELAY_MS = 1200;
 let activeCount = 0;
 // File blobs aren't serializable, so they can't live in Redux — kept here,
 // keyed by the same id used in the slice's queue entries.
@@ -29,15 +42,19 @@ export const getRelativePath = (file) => {
 
 const authHeaders = () => ({ Authorization: `Bearer ${store.getState().auth.token}` });
 
-const uploadOne = async (item) => {
+const uploadOne = async (item, attempt = 1) => {
   const file = fileBlobs.get(item.id);
   const formData = new FormData();
   formData.append('files', file, file.name);
   formData.append('relativePath', item.relativePath);
 
   try {
+    // No explicit Content-Type here: axios detects a FormData body and
+    // sets multipart/form-data with the correct boundary itself — setting
+    // it manually (as this used to) supplies no boundary and gets
+    // overridden anyway, so it was dead weight.
     const res = await axios.post(api.endpoints.files.upload(), formData, {
-      headers: { ...authHeaders(), 'Content-Type': 'multipart/form-data' },
+      headers: authHeaders(),
       onUploadProgress: (evt) => {
         const pct = evt.total ? Math.round((evt.loaded / evt.total) * 100) : 0;
         store.dispatch(updateQueueItem({ id: item.id, patch: { progress: pct } }));
@@ -50,10 +67,22 @@ const uploadOne = async (item) => {
       store.dispatch(prependMyFile(uploaded));
     }
     fileBlobs.delete(item.id);
+    activeCount -= 1;
+    kickQueue();
   } catch (err) {
+    const isTransportError = !err.response;
+    if (isTransportError && attempt < MAX_AUTO_RETRIES) {
+      store.dispatch(updateQueueItem({ id: item.id, patch: { progress: 0, error: null } }));
+      // Held slot, not released: staying at the same activeCount during
+      // the backoff means the retry itself doesn't add to whatever
+      // pressure caused the failure, and it gives already-queued uploads
+      // a moment to finish and free their blobs first.
+      setTimeout(() => uploadOne(item, attempt + 1), AUTO_RETRY_BASE_DELAY_MS * attempt);
+      return;
+    }
+
     const message = err?.response?.data?.message || err?.message || 'Upload failed.';
     store.dispatch(updateQueueItem({ id: item.id, patch: { status: 'failed', error: message } }));
-  } finally {
     activeCount -= 1;
     kickQueue();
   }
