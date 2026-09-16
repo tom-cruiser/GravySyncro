@@ -10,6 +10,14 @@ import './PlusFiles.css';
 
 const CONCURRENCY = 3;
 
+// Mirrors the backend's isEnterpriseAdmin (utils/workspaceAccess.js ROLE_ALIASES):
+// 'Admin' and 'Enterprise Admin' both normalize to Enterprise Admin there.
+// requirePlus (middleware/planAccess.js) lets these roles through regardless
+// of isPlus, same as every other paywall/ownership gate in the app — this
+// UI gate has to agree, or an admin who the backend lets in still gets
+// stuck on the upgrade CTA.
+const hasFileVaultAccess = (user) => Boolean(user?.isPlus) || ['Admin', 'Enterprise Admin'].includes(user?.role);
+
 const formatBytes = (bytes) => {
   if (!bytes) return '0 B';
   const k = 1024;
@@ -63,8 +71,8 @@ const PlusFiles = () => {
   }, [authHeaders, dispatch]);
 
   useEffect(() => {
-    if (user?.isPlus) fetchFiles();
-  }, [user?.isPlus, fetchFiles]);
+    if (hasFileVaultAccess(user)) fetchFiles();
+  }, [user, fetchFiles]);
 
   const updateItem = (id, patch) => {
     setQueue((prev) => {
@@ -189,7 +197,7 @@ const PlusFiles = () => {
     }
   };
 
-  if (!user?.isPlus) {
+  if (!hasFileVaultAccess(user)) {
     return <UpgradeCTA />;
   }
 
