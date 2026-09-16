@@ -1,0 +1,321 @@
+.plus-files-page {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 8px 4px 40px;
+}
+
+.plus-files-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.plus-files-header h1 {
+  margin: 0 0 4px;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--auth-ink, #1c1b2e);
+}
+
+.plus-files-subtitle {
+  margin: 0;
+  font-size: 14px;
+  color: var(--auth-muted, #55536e);
+}
+
+.plus-files-summary {
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(28, 27, 46, 0.06);
+  color: var(--auth-ink, #1c1b2e);
+  font-weight: 700;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.plus-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+  padding: 36px 20px;
+  border: 2px dashed var(--auth-border, rgba(28, 27, 46, 0.18));
+  border-radius: 16px;
+  background: var(--auth-cream, #faf6ec);
+  color: var(--auth-muted, #55536e);
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.plus-dropzone:hover,
+.plus-dropzone.active {
+  border-color: var(--auth-c1, #1c1b2e);
+  background: rgba(28, 27, 46, 0.04);
+}
+
+.plus-dropzone p {
+  margin: 0;
+  color: var(--auth-ink, #1c1b2e);
+  font-size: 15px;
+}
+
+.plus-dropzone-hint {
+  font-size: 12px;
+}
+
+.plus-queue,
+.plus-documents {
+  margin-top: 24px;
+}
+
+.plus-queue-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.plus-queue-header h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--auth-ink, #1c1b2e);
+}
+
+.plus-link-btn {
+  border: none;
+  background: transparent;
+  color: var(--auth-muted, #55536e);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.plus-queue-list,
+.plus-documents-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.plus-queue-item,
+.plus-documents-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--auth-border-soft, rgba(28, 27, 46, 0.08));
+  border-radius: 12px;
+  background: var(--auth-white, #fffdf8);
+}
+
+.plus-queue-item-info,
+.plus-documents-item-info {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.plus-queue-item-name,
+.plus-documents-item-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--auth-ink, #1c1b2e);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.plus-queue-item-size,
+.plus-documents-item-meta {
+  font-size: 12px;
+  color: var(--auth-muted, #55536e);
+}
+
+.plus-queue-item-progress {
+  flex: 1 1 140px;
+  max-width: 160px;
+}
+
+.plus-progress-track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(28, 27, 46, 0.08);
+  overflow: hidden;
+}
+
+.plus-progress-fill {
+  height: 100%;
+  background: var(--auth-c1, #1c1b2e);
+  transition: width 0.2s ease;
+}
+
+.plus-queue-item.status-failed .plus-progress-fill {
+  background: #dc2626;
+}
+
+.plus-queue-item.status-done .plus-progress-fill {
+  background: #16a34a;
+}
+
+.plus-queue-item-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.plus-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.plus-status-badge.queued {
+  background: rgba(28, 27, 46, 0.08);
+  color: var(--auth-muted, #55536e);
+}
+
+.plus-status-badge.uploading {
+  background: rgba(59, 130, 246, 0.14);
+  color: #1d4ed8;
+}
+
+.plus-status-badge.done {
+  background: rgba(22, 163, 74, 0.14);
+  color: #15803d;
+}
+
+.plus-status-badge.failed {
+  background: rgba(220, 38, 38, 0.12);
+  color: #b91c1c;
+}
+
+.plus-status-badge .spin {
+  animation: plus-spin 0.9s linear infinite;
+}
+
+@keyframes plus-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.plus-documents-item-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.plus-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--auth-border-soft, rgba(28, 27, 46, 0.1));
+  border-radius: 8px;
+  background: transparent;
+  color: var(--auth-ink, #1c1b2e);
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.plus-icon-btn:hover {
+  background: var(--auth-cream, #faf6ec);
+}
+
+.plus-icon-btn.danger:hover {
+  background: rgba(220, 38, 38, 0.1);
+  color: #b91c1c;
+}
+
+.plus-empty {
+  font-size: 13px;
+  color: var(--auth-muted, #55536e);
+  padding: 14px 0;
+}
+
+.plus-upgrade-card {
+  max-width: 420px;
+  margin: 60px auto;
+  text-align: center;
+  padding: 32px 28px;
+  border: 1px solid var(--auth-border, rgba(28, 27, 46, 0.1));
+  border-radius: 20px;
+  background: var(--auth-white, #fffdf8);
+  box-shadow: 0 20px 50px rgba(2, 6, 23, 0.1);
+}
+
+.plus-upgrade-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: rgba(245, 158, 11, 0.14);
+  color: #b45309;
+  margin-bottom: 12px;
+}
+
+.plus-upgrade-card h2 {
+  margin: 0 0 8px;
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--auth-ink, #1c1b2e);
+}
+
+.plus-upgrade-card p {
+  margin: 0 0 18px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--auth-muted, #55536e);
+}
+
+.plus-upgrade-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  border-radius: 999px;
+  padding: 10px 22px;
+  background: var(--auth-c1, #1c1b2e);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.plus-upgrade-btn:hover {
+  opacity: 0.88;
+}
+
+@media (max-width: 640px) {
+  .plus-queue-item,
+  .plus-documents-item {
+    flex-wrap: wrap;
+  }
+
+  .plus-queue-item-progress {
+    order: 3;
+    max-width: none;
+    flex-basis: 100%;
+  }
+}

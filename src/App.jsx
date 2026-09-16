@@ -16,6 +16,7 @@ import Billing from './pages/Billing';
 import Invoices from './pages/Invoices';
 import AdminDashboard from './pages/AdminDashboard';
 import Workspaces from './pages/Workspaces';
+import PlusFiles from './pages/PlusFiles';
 import { logout, setAuthUser } from './features/auth/authSlice';
 import ToastContainer from './components/ToastContainer';
 import SubscriptionGateModal from './components/SubscriptionGateModal';
@@ -77,6 +78,7 @@ function App() {
         <Route element={<PrivateRoute><Layout /></PrivateRoute>}>
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="documents" element={<Documents />} />
+          <Route path="plus-files" element={<PlusFiles />} />
           <Route path="workspaces" element={<Workspaces />} />
           <Route path="profile" element={<Profile />} />
           <Route path="support" element={<Support />} />

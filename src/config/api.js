@@ -101,6 +101,12 @@ export default {
       invoicePdf: (id) => getApiUrl(`/billing/invoices/${id}/pdf`),
       generateInvoice: () => getApiUrl('/billing/invoices/generate'),
     },
+    files: {
+      list: () => getApiUrl('/files'),
+      upload: () => getApiUrl('/files/upload'),
+      download: (id) => getApiUrl(`/files/${id}/download`),
+      delete: (id) => getApiUrl(`/files/${id}`),
+    },
     health: () => getApiUrl('/health'),
   }
 };

@@ -17,6 +17,7 @@ import {
   CreditCard,
   FolderKanban,
   Receipt,
+  Sparkles,
 } from 'lucide-react';
 import { logout } from '../features/auth/authSlice';
 import { prependNotification, setUnreadCount } from '../features/notifications/notificationsSlice';
@@ -109,6 +110,7 @@ const Layout = () => {
   const navItems = [
     { path: '/dashboard', icon: LayoutDashboard, label: t('navigation.dashboard') },
     { path: '/documents', icon: FileText, label: t('navigation.documents') },
+    { path: '/plus-files', icon: Sparkles, label: 'File Vault' },
     { path: '/workspaces', icon: FolderKanban, label: workspaceLabel },
     { path: '/profile', icon: User, label: t('navigation.profile') },
     { path: '/support', icon: HelpCircle, label: t('navigation.support') },
