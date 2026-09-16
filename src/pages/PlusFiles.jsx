@@ -3,12 +3,19 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { useDropzone } from 'react-dropzone';
 import axios from 'axios';
-import { UploadCloud, Download, Trash2, RotateCcw, CheckCircle2, AlertCircle, Loader2, Sparkles, Lock } from 'lucide-react';
+import { UploadCloud, FolderUp, Search, X, Download, Trash2, RotateCcw, CheckCircle2, AlertCircle, Loader2, Sparkles, Lock } from 'lucide-react';
 import api from '../config/api';
 import { addNotification } from '../features/notifications/notificationsSlice';
+import {
+  setSearchTerm,
+  setLoadingList,
+  setMyFiles,
+  removeMyFile,
+  removeMyFiles,
+  clearFinishedQueueItems,
+} from '../features/plusFiles/plusFilesSlice';
+import { enqueueFiles, retryItem } from '../features/plusFiles/uploadManager';
 import './PlusFiles.css';
-
-const CONCURRENCY = 3;
 
 // Mirrors the backend's isEnterpriseAdmin (utils/workspaceAccess.js ROLE_ALIASES):
 // 'Admin' and 'Enterprise Admin' both normalize to Enterprise Admin there.
@@ -45,120 +52,137 @@ const UpgradeCTA = () => {
 const PlusFiles = () => {
   const dispatch = useDispatch();
   const { user, token } = useSelector((state) => state.auth);
+  // Queue and myFiles live in Redux (features/plusFiles/plusFilesSlice.js),
+  // not component state — they need to survive the user navigating to
+  // another page and back, which a useState here would not.
+  const { queue, myFiles, loadingList, searchTerm } = useSelector((state) => state.plusFiles);
 
-  const [queue, setQueue] = useState([]);
-  const [myFiles, setMyFiles] = useState([]);
-  const [loadingList, setLoadingList] = useState(false);
+  const [searchInput, setSearchInput] = useState(searchTerm);
+  // Selection is ephemeral, view-only state — unlike the queue/myFiles data
+  // itself it doesn't need to survive navigating away, so plain component
+  // state (not the Redux slice) is the right place for it.
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const folderInputRef = useRef(null);
+  const didMountSearchRef = useRef(false);
 
-  const queueRef = useRef([]);
-  const activeCountRef = useRef(0);
+  // webkitdirectory/directory aren't real React DOM props (no JSX attribute
+  // maps to them), so they're set imperatively on the underlying <input> —
+  // this is what turns its native picker into a folder-only chooser.
+  useEffect(() => {
+    if (folderInputRef.current) {
+      folderInputRef.current.webkitdirectory = true;
+      folderInputRef.current.directory = true;
+    }
+  }, []);
 
   const authHeaders = useCallback(() => ({ Authorization: `Bearer ${token}` }), [token]);
 
-  const fetchFiles = useCallback(async () => {
-    setLoadingList(true);
+  const fetchFiles = useCallback(async (search) => {
+    dispatch(setLoadingList(true));
     try {
-      const res = await axios.get(api.endpoints.files.list(), { headers: authHeaders() });
-      setMyFiles(res.data?.data?.files || []);
+      const res = await axios.get(api.endpoints.files.list(), {
+        headers: authHeaders(),
+        params: search ? { search } : undefined,
+      });
+      dispatch(setMyFiles(res.data?.data?.files || []));
     } catch (err) {
       dispatch(addNotification({
         id: Date.now(), type: 'error', read: false, timestamp: new Date().toISOString(),
         message: err?.response?.data?.message || 'Failed to load your files.',
       }));
     } finally {
-      setLoadingList(false);
+      dispatch(setLoadingList(false));
     }
   }, [authHeaders, dispatch]);
 
+  // Re-fetches whenever the page (re)mounts — cheap, and catches anything
+  // that changed elsewhere. The list itself stays visible from the Redux
+  // slice the instant the page re-mounts, so this just refreshes it rather
+  // than starting from a blank "no files" state.
   useEffect(() => {
-    if (hasFileVaultAccess(user)) fetchFiles();
-  }, [user, fetchFiles]);
+    if (hasFileVaultAccess(user)) fetchFiles(searchTerm);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
-  const updateItem = (id, patch) => {
-    setQueue((prev) => {
-      const next = prev.map((item) => (item.id === id ? { ...item, ...patch } : item));
-      queueRef.current = next;
+  // Debounced server-side search — filters by file name or folder path.
+  // Skips its first run: the mount effect above already fetched with the
+  // persisted search term, so firing again immediately would just repeat
+  // the same request.
+  useEffect(() => {
+    if (!hasFileVaultAccess(user)) return undefined;
+    if (!didMountSearchRef.current) {
+      didMountSearchRef.current = true;
+      return undefined;
+    }
+    const handle = setTimeout(() => {
+      dispatch(setSearchTerm(searchInput));
+      fetchFiles(searchInput);
+    }, 300);
+    return () => clearTimeout(handle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchInput]);
+
+  // Drop any selected id that's no longer in the current list (deleted,
+  // filtered out by a new search, etc.) instead of holding onto stale ids.
+  useEffect(() => {
+    setSelectedIds((prev) => {
+      if (prev.size === 0) return prev;
+      const visibleIds = new Set(myFiles.map((file) => String(file.id)));
+      const next = new Set([...prev].filter((id) => visibleIds.has(String(id))));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [myFiles]);
+
+  const toggleSelect = (id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
   };
 
-  const uploadItem = async (item) => {
-    const formData = new FormData();
-    formData.append('files', item.file, item.file.name);
-
-    try {
-      const res = await axios.post(api.endpoints.files.upload(), formData, {
-        headers: { ...authHeaders(), 'Content-Type': 'multipart/form-data' },
-        onUploadProgress: (evt) => {
-          const pct = evt.total ? Math.round((evt.loaded / evt.total) * 100) : 0;
-          updateItem(item.id, { progress: pct });
-        },
-      });
-
-      updateItem(item.id, { status: 'done', progress: 100 });
-      const uploaded = res.data?.data?.files?.[0];
-      if (uploaded) {
-        setMyFiles((prev) => [uploaded, ...prev]);
-      }
-    } catch (err) {
-      const message = err?.response?.data?.message || err?.message || 'Upload failed.';
-      updateItem(item.id, { status: 'failed', error: message });
-    } finally {
-      activeCountRef.current -= 1;
-      kickQueue();
-    }
+  const toggleSelectAll = () => {
+    setSelectedIds((prev) => (
+      prev.size === myFiles.length ? new Set() : new Set(myFiles.map((file) => file.id))
+    ));
   };
 
-  // Pulls up to CONCURRENCY queued items and starts them. Mutates queueRef
-  // synchronously inside the loop so a batch of N dropped files immediately
-  // claims 3 slots instead of racing the next render to see updated status.
-  const kickQueue = () => {
-    while (activeCountRef.current < CONCURRENCY) {
-      const next = queueRef.current.find((item) => item.status === 'queued');
-      if (!next) break;
+  const handleBulkDelete = async () => {
+    const ids = [...selectedIds];
+    if (ids.length === 0) return;
+    if (!window.confirm(`Delete ${ids.length} selected file${ids.length === 1 ? '' : 's'}? This cannot be undone.`)) return;
 
-      activeCountRef.current += 1;
-      queueRef.current = queueRef.current.map((item) => (
-        item.id === next.id ? { ...item, status: 'uploading', progress: 0, error: null } : item
-      ));
-      setQueue(queueRef.current);
-      uploadItem(next);
+    try {
+      const res = await axios.delete(api.endpoints.files.bulkDelete(), {
+        headers: authHeaders(),
+        data: { ids },
+      });
+      const deletedIds = res.data?.data?.deletedIds || ids;
+      dispatch(removeMyFiles(deletedIds));
+      setSelectedIds(new Set());
+    } catch (err) {
+      dispatch(addNotification({
+        id: Date.now(), type: 'error', read: false, timestamp: new Date().toISOString(),
+        message: err?.response?.data?.message || 'Bulk delete failed.',
+      }));
     }
   };
 
   const onDrop = useCallback((accepted) => {
-    if (!accepted?.length) return;
-    const items = accepted.map((file) => ({
-      id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
-      file,
-      status: 'queued',
-      progress: 0,
-      error: null,
-    }));
-
-    queueRef.current = [...queueRef.current, ...items];
-    setQueue(queueRef.current);
-    kickQueue();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    enqueueFiles(accepted);
   }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     multiple: true,
-    // Deliberately no `accept` — the Plus vault stores any file type.
+    // Deliberately no `accept` (any file type) and no `maxFiles` (as many
+    // files/folders as the user hands over).
   });
 
-  const retryItem = (id) => {
-    queueRef.current = queueRef.current.map((item) => (
-      item.id === id ? { ...item, status: 'queued', error: null, progress: 0 } : item
-    ));
-    setQueue(queueRef.current);
-    kickQueue();
-  };
-
-  const clearFinished = () => {
-    queueRef.current = queueRef.current.filter((item) => item.status !== 'done');
-    setQueue(queueRef.current);
+  const handleFolderInputChange = (event) => {
+    enqueueFiles(Array.from(event.target.files || []));
+    // Reset so picking the same folder again still fires onChange.
+    event.target.value = '';
   };
 
   const handleDownload = async (file) => {
@@ -188,7 +212,13 @@ const PlusFiles = () => {
     if (!window.confirm(`Delete "${file.originalName}"? This cannot be undone.`)) return;
     try {
       await axios.delete(api.endpoints.files.delete(file.id), { headers: authHeaders() });
-      setMyFiles((prev) => prev.filter((item) => item.id !== file.id));
+      dispatch(removeMyFile(file.id));
+      setSelectedIds((prev) => {
+        if (!prev.has(file.id)) return prev;
+        const next = new Set(prev);
+        next.delete(file.id);
+        return next;
+      });
     } catch (err) {
       dispatch(addNotification({
         id: Date.now(), type: 'error', read: false, timestamp: new Date().toISOString(),
@@ -221,24 +251,40 @@ const PlusFiles = () => {
       <div {...getRootProps({ className: `plus-dropzone ${isDragActive ? 'active' : ''}` })}>
         <input {...getInputProps()} />
         <UploadCloud size={28} />
-        <p><strong>Drag & drop files here</strong>, or click to browse</p>
-        <span className="plus-dropzone-hint">Any file type · up to {formatBytes(parseInt(import.meta.env.VITE_PLUS_MAX_FILE_SIZE, 10) || 104857600)} per file</span>
+        <p><strong>Drag & drop files or folders here</strong>, or click to browse</p>
+        <span className="plus-dropzone-hint">
+          Any file type · no limit on how many · up to {formatBytes(parseInt(import.meta.env.VITE_PLUS_MAX_FILE_SIZE, 10) || 524288000)} per file
+        </span>
+        <button
+          type="button"
+          className="plus-secondary-btn"
+          onClick={(event) => { event.stopPropagation(); folderInputRef.current?.click(); }}
+        >
+          <FolderUp size={15} /> Select a folder
+        </button>
       </div>
+      <input
+        ref={folderInputRef}
+        type="file"
+        multiple
+        hidden
+        onChange={handleFolderInputChange}
+      />
 
       {queue.length > 0 && (
         <div className="plus-queue">
           <div className="plus-queue-header">
             <h3>Uploads</h3>
             {doneCount > 0 && (
-              <button type="button" className="plus-link-btn" onClick={clearFinished}>Clear completed</button>
+              <button type="button" className="plus-link-btn" onClick={() => dispatch(clearFinishedQueueItems())}>Clear completed</button>
             )}
           </div>
           <ul className="plus-queue-list">
             {queue.map((item) => (
               <li key={item.id} className={`plus-queue-item status-${item.status}`}>
                 <div className="plus-queue-item-info">
-                  <span className="plus-queue-item-name" title={item.file.name}>{item.file.name}</span>
-                  <span className="plus-queue-item-size">{formatBytes(item.file.size)}</span>
+                  <span className="plus-queue-item-name" title={item.relativePath}>{item.relativePath}</span>
+                  <span className="plus-queue-item-size">{formatBytes(item.size)}</span>
                 </div>
                 <div className="plus-queue-item-progress">
                   <div className="plus-progress-track">
@@ -270,16 +316,56 @@ const PlusFiles = () => {
         <div className="plus-queue-header">
           <h3>My Documents</h3>
         </div>
+        <div className="plus-search">
+          <Search size={15} />
+          <input
+            type="text"
+            placeholder="Search files and folders…"
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
+          />
+          {searchInput && (
+            <button type="button" className="plus-search-clear" onClick={() => setSearchInput('')} title="Clear search">
+              <X size={14} />
+            </button>
+          )}
+        </div>
+
+        {myFiles.length > 0 && (
+          <div className="plus-bulk-bar">
+            <label className="plus-select-all">
+              <input
+                type="checkbox"
+                checked={selectedIds.size > 0 && selectedIds.size === myFiles.length}
+                ref={(el) => { if (el) el.indeterminate = selectedIds.size > 0 && selectedIds.size < myFiles.length; }}
+                onChange={toggleSelectAll}
+              />
+              {selectedIds.size > 0 ? `${selectedIds.size} selected` : 'Select all'}
+            </label>
+            {selectedIds.size > 0 && (
+              <button type="button" className="plus-bulk-delete-btn" onClick={handleBulkDelete}>
+                <Trash2 size={14} /> Delete selected
+              </button>
+            )}
+          </div>
+        )}
+
         {loadingList ? (
           <p className="plus-empty">Loading…</p>
         ) : myFiles.length === 0 ? (
-          <p className="plus-empty">No files uploaded yet.</p>
+          <p className="plus-empty">{searchTerm ? 'No files match your search.' : 'No files uploaded yet.'}</p>
         ) : (
           <ul className="plus-documents-list">
             {myFiles.map((file) => (
-              <li key={file.id} className="plus-documents-item">
+              <li key={file.id} className={`plus-documents-item ${selectedIds.has(file.id) ? 'selected' : ''}`}>
+                <input
+                  type="checkbox"
+                  className="plus-item-checkbox"
+                  checked={selectedIds.has(file.id)}
+                  onChange={() => toggleSelect(file.id)}
+                />
                 <div className="plus-documents-item-info">
-                  <span className="plus-documents-item-name" title={file.originalName}>{file.originalName}</span>
+                  <span className="plus-documents-item-name" title={file.relativePath || file.originalName}>{file.relativePath || file.originalName}</span>
                   <span className="plus-documents-item-meta">
                     {formatBytes(file.size)} · {new Date(file.uploadedAt).toLocaleString()}
                   </span>

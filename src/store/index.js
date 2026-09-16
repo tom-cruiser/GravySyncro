@@ -6,6 +6,7 @@ import sharingReducer from '../features/sharing/sharingSlice';
 import collaborationReducer from '../features/collaboration/collaborationSlice';
 import workspaceReducer from '../features/workspace/workspaceSlice';
 import subscriptionGateReducer from '../features/subscriptionGate/subscriptionGateSlice';
+import plusFilesReducer from '../features/plusFiles/plusFilesSlice';
 
 export const store = configureStore({
   reducer: {
@@ -16,6 +17,7 @@ export const store = configureStore({
     collaboration: collaborationReducer,
     workspace: workspaceReducer,
     subscriptionGate: subscriptionGateReducer,
+    plusFiles: plusFilesReducer,
   },
 });
 

@@ -106,6 +106,7 @@ export default {
       upload: () => getApiUrl('/files/upload'),
       download: (id) => getApiUrl(`/files/${id}/download`),
       delete: (id) => getApiUrl(`/files/${id}`),
+      bulkDelete: () => getApiUrl('/files'),
     },
     health: () => getApiUrl('/health'),
   }
