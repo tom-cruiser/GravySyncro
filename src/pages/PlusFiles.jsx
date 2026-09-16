@@ -1,9 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
 import { useDropzone } from 'react-dropzone';
 import axios from 'axios';
-import { UploadCloud, FolderUp, Search, X, Download, Trash2, RotateCcw, CheckCircle2, AlertCircle, Loader2, Sparkles, Lock } from 'lucide-react';
+import { UploadCloud, FolderUp, Search, X, Download, Trash2, RotateCcw, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import api from '../config/api';
 import { addNotification } from '../features/notifications/notificationsSlice';
 import {
@@ -17,14 +16,6 @@ import {
 import { enqueueFiles, retryItem } from '../features/plusFiles/uploadManager';
 import './PlusFiles.css';
 
-// Mirrors the backend's isEnterpriseAdmin (utils/workspaceAccess.js ROLE_ALIASES):
-// 'Admin' and 'Enterprise Admin' both normalize to Enterprise Admin there.
-// requirePlus (middleware/planAccess.js) lets these roles through regardless
-// of isPlus, same as every other paywall/ownership gate in the app — this
-// UI gate has to agree, or an admin who the backend lets in still gets
-// stuck on the upgrade CTA.
-const hasFileVaultAccess = (user) => Boolean(user?.isPlus) || ['Admin', 'Enterprise Admin'].includes(user?.role);
-
 const formatBytes = (bytes) => {
   if (!bytes) return '0 B';
   const k = 1024;
@@ -33,25 +24,9 @@ const formatBytes = (bytes) => {
   return `${Math.round((bytes / Math.pow(k, i)) * 100) / 100} ${sizes[i]}`;
 };
 
-const UpgradeCTA = () => {
-  const navigate = useNavigate();
-  return (
-    <div className="plus-files-page">
-      <div className="plus-upgrade-card">
-        <div className="plus-upgrade-icon"><Lock size={22} /></div>
-        <h2>Plus feature</h2>
-        <p>The file vault lets you upload any file type in bulk and download it back byte-for-byte identical. Upgrade to Plus to unlock it.</p>
-        <button type="button" className="plus-upgrade-btn" onClick={() => navigate('/billing')}>
-          <Sparkles size={16} /> View plans
-        </button>
-      </div>
-    </div>
-  );
-};
-
 const PlusFiles = () => {
   const dispatch = useDispatch();
-  const { user, token } = useSelector((state) => state.auth);
+  const { token } = useSelector((state) => state.auth);
   // Queue and myFiles live in Redux (features/plusFiles/plusFilesSlice.js),
   // not component state — they need to survive the user navigating to
   // another page and back, which a useState here would not.
@@ -100,16 +75,15 @@ const PlusFiles = () => {
   // slice the instant the page re-mounts, so this just refreshes it rather
   // than starting from a blank "no files" state.
   useEffect(() => {
-    if (hasFileVaultAccess(user)) fetchFiles(searchTerm);
+    fetchFiles(searchTerm);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, []);
 
   // Debounced server-side search — filters by file name or folder path.
   // Skips its first run: the mount effect above already fetched with the
   // persisted search term, so firing again immediately would just repeat
   // the same request.
   useEffect(() => {
-    if (!hasFileVaultAccess(user)) return undefined;
     if (!didMountSearchRef.current) {
       didMountSearchRef.current = true;
       return undefined;
@@ -226,10 +200,6 @@ const PlusFiles = () => {
       }));
     }
   };
-
-  if (!hasFileVaultAccess(user)) {
-    return <UpgradeCTA />;
-  }
 
   const doneCount = queue.filter((item) => item.status === 'done').length;
   const totalCount = queue.length;

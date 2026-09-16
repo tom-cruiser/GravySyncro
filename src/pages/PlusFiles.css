@@ -369,61 +369,6 @@
   padding: 14px 0;
 }
 
-.plus-upgrade-card {
-  max-width: 420px;
-  margin: 60px auto;
-  text-align: center;
-  padding: 32px 28px;
-  border: 1px solid var(--auth-border, rgba(28, 27, 46, 0.1));
-  border-radius: 20px;
-  background: var(--auth-white, #fffdf8);
-  box-shadow: 0 20px 50px rgba(2, 6, 23, 0.1);
-}
-
-.plus-upgrade-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
-  background: rgba(245, 158, 11, 0.14);
-  color: #b45309;
-  margin-bottom: 12px;
-}
-
-.plus-upgrade-card h2 {
-  margin: 0 0 8px;
-  font-size: 19px;
-  font-weight: 800;
-  color: var(--auth-ink, #1c1b2e);
-}
-
-.plus-upgrade-card p {
-  margin: 0 0 18px;
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--auth-muted, #55536e);
-}
-
-.plus-upgrade-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  border: none;
-  border-radius: 999px;
-  padding: 10px 22px;
-  background: var(--auth-c1, #1c1b2e);
-  color: #ffffff;
-  font-weight: 700;
-  font-size: 14px;
-  cursor: pointer;
-  transition: opacity 0.2s ease;
-}
-
-.plus-upgrade-btn:hover {
-  opacity: 0.88;
-}
 
 @media (max-width: 640px) {
   .plus-queue-item,
