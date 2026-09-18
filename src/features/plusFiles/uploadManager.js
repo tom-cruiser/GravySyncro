@@ -24,10 +24,29 @@ const CONCURRENCY = 3;
 // succeeds without the user needing to notice and click retry themselves.
 const MAX_AUTO_RETRIES = 4;
 const AUTO_RETRY_BASE_DELAY_MS = 1200;
+// How many files are allowed to hold a live blob reference (in fileBlobs)
+// at once, independent of CONCURRENCY. Without this cap, dropping a folder
+// with thousands of files used to register every single File object with
+// fileBlobs synchronously at selection time — a straight-to-N spike in
+// live blob references before a single upload had a chance to finish and
+// free one, which is exactly the moment the ERR_BLOB_OUT_OF_MEMORY retries
+// above are compensating for. Keeping the window small and well above
+// CONCURRENCY still keeps the upload pipe full, but caps the worst-case
+// number of live blob references to this constant instead of the batch
+// size, so retries above are a safety net rather than load-bearing.
+const ADMISSION_WINDOW = 40;
 let activeCount = 0;
 // File blobs aren't serializable, so they can't live in Redux — kept here,
-// keyed by the same id used in the slice's queue entries.
+// keyed by the same id used in the slice's queue entries. Only ids that
+// have been admitted (see admitMore below) get a blob here; the rest wait
+// in pendingFiles.
 const fileBlobs = new Map();
+// Raw {id, file} entries for files that have been queued (and are already
+// visible in the Redux queue) but not yet admitted into fileBlobs, in
+// selection order. This is the only reference kept to those File objects
+// until they're admitted, so the total live blob-reference count at any
+// time is bounded by ADMISSION_WINDOW rather than the size of the batch.
+const pendingFiles = [];
 
 // file-selector (react-dropzone's file-reading engine) sets `file.path` on
 // every File it hands back — "./name.ext" for a plain file, or the
@@ -68,7 +87,7 @@ const uploadOne = async (item, attempt = 1) => {
     }
     fileBlobs.delete(item.id);
     activeCount -= 1;
-    kickQueue();
+    admitMore();
   } catch (err) {
     // No response at all (browser dropped the request — see the blob
     // pressure note above) is one retryable case; a 429 (rate limited) or
@@ -93,10 +112,15 @@ const uploadOne = async (item, attempt = 1) => {
       return;
     }
 
+    // Deliberately not fileBlobs.delete(item.id) here: a failed item keeps
+    // its blob so the user can hit Retry without re-selecting the file. It
+    // does mean a failed item continues to occupy a slot in the admission
+    // window until it's retried (successfully) or removed — an acceptable
+    // trade-off, and effectively a circuit breaker if failures pile up.
     const message = err?.response?.data?.message || err?.message || 'Upload failed.';
     store.dispatch(updateQueueItem({ id: item.id, patch: { status: 'failed', error: message } }));
     activeCount -= 1;
-    kickQueue();
+    admitMore();
   }
 };
 
@@ -115,12 +139,30 @@ function kickQueue() {
   }
 }
 
+// Pulls from pendingFiles into fileBlobs while there's room in the
+// admission window, then kicks the upload queue. Called whenever the
+// window might have freed up (a file finished uploading) or grown (a new
+// batch was just enqueued) — always ends by kicking the queue too, since
+// there may be room to start an already-admitted file even when nothing
+// new gets admitted.
+function admitMore() {
+  while (fileBlobs.size < ADMISSION_WINDOW && pendingFiles.length > 0) {
+    const { id, file } = pendingFiles.shift();
+    fileBlobs.set(id, file);
+  }
+  kickQueue();
+}
+
 export const enqueueFiles = (files) => {
   if (!files?.length) return;
 
   const items = files.map((file) => {
     const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
-    fileBlobs.set(id, file);
+    // Not fileBlobs.set here — the File object is held only in
+    // pendingFiles until admitMore() below (or a later one, once earlier
+    // files finish) brings it into the admission window. See
+    // ADMISSION_WINDOW above for why.
+    pendingFiles.push({ id, file });
     return {
       id,
       name: file.name,
@@ -133,7 +175,7 @@ export const enqueueFiles = (files) => {
   });
 
   store.dispatch(enqueueItems(items));
-  kickQueue();
+  admitMore();
 };
 
 // Retrying a file whose blob has since been garbage-collected (e.g. the
