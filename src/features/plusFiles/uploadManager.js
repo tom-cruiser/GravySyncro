@@ -70,14 +70,26 @@ const uploadOne = async (item, attempt = 1) => {
     activeCount -= 1;
     kickQueue();
   } catch (err) {
-    const isTransportError = !err.response;
-    if (isTransportError && attempt < MAX_AUTO_RETRIES) {
+    // No response at all (browser dropped the request — see the blob
+    // pressure note above) is one retryable case; a 429 (rate limited) or
+    // 5xx (transient server/proxy error) is another — both are the server
+    // or network being temporarily overwhelmed by a big batch rather than
+    // anything wrong with this particular file, so they deserve the same
+    // backoff-and-retry treatment instead of being surfaced as a permanent
+    // failure on whichever files happened to land during the squeeze.
+    const status = err.response?.status;
+    const isRetryable = !err.response || status === 429 || (status >= 500 && status < 600);
+    if (isRetryable && attempt < MAX_AUTO_RETRIES) {
       store.dispatch(updateQueueItem({ id: item.id, patch: { progress: 0, error: null } }));
       // Held slot, not released: staying at the same activeCount during
       // the backoff means the retry itself doesn't add to whatever
       // pressure caused the failure, and it gives already-queued uploads
       // a moment to finish and free their blobs first.
-      setTimeout(() => uploadOne(item, attempt + 1), AUTO_RETRY_BASE_DELAY_MS * attempt);
+      const retryAfterMs = status === 429 ? Number(err.response.headers?.['retry-after']) * 1000 : NaN;
+      const delay = Number.isFinite(retryAfterMs) && retryAfterMs > 0
+        ? retryAfterMs
+        : AUTO_RETRY_BASE_DELAY_MS * attempt;
+      setTimeout(() => uploadOne(item, attempt + 1), delay);
       return;
     }
 
